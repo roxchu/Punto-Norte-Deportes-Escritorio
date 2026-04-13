@@ -1,0 +1,284 @@
+#include <iostream>
+#include <iomanip>
+#include <string>
+using namespace std;
+//DEFINICION DE ESTRUCTURAS
+struct Libros{
+    int id;
+    string titulo;
+    string autor;
+    int anio_pub;
+    int ejemplares;
+    Libros *sgte;
+};
+struct Usuarios{
+    int id;
+    string nombre;
+    string apellido;
+    string email;
+    Usuarios *sgte;
+};
+struct Prestamos{
+    int id;
+    int usuario;
+    int libro;
+    string fprestamo;
+    string fdevolucion;
+    bool volvio;
+    Prestamos *sgte;
+};
+
+//DECLARACION DE FUNCIONES
+// *punteros por valor (no se modifica el contenido)
+// *&punteros por referencia (se modifica el contenido)
+
+
+void prestar(Prestamos *&, Libros *,Usuarios *);
+void consPrest(Prestamos *);
+void devolver(Prestamos *&);
+void histUsuario(Prestamos *, Usuarios *);
+int menu();
+
+//FUNCION PRINCIPAL
+int main() {
+    //DECLARACION DE VARIABLES
+    int op;
+    Libros *libro=NULL;
+    Usuarios *usuario=NULL;
+    Prestamos *prestamo=NULL;
+    //CUERPO DEL PROGRAMA
+    do{
+        op=menu();//LLAMADO A FUNCION MENU
+        switch (op){//DE ACUERDO A OP SE LLAMAN A FUNCIONES
+            case 1:
+                regLibro(libro);
+                break;
+            case 2:
+                regUsuario(usuario);
+                break;
+            case 3:
+                consLibro(libro);
+                break;
+            case 4:
+                if (libro!=NULL && usuario!=NULL){
+                    prestar(prestamo,libro,usuario);
+                }else{
+                    cout<<"Es necesario cargar usuarios y/o libros";
+                }
+                break;
+            case 5:
+                if (prestamo!=NULL){
+                    devolver(prestamo);
+                }else{
+                    cout<<"NO HAY PRESTAMOS REALIZADOS";
+                }
+                break;
+            case 6:
+                if (usuario!=NULL){
+                    histUsuario(prestamo,usuario);
+                }else{
+                    cout<<"NO HAY USUARIOS CARGADOS";
+                }
+                break;
+            case 7:
+                break;
+            default:
+                cout<<"Ingrese opcion valida";
+        }
+    }while (op!=7);
+}
+//REGISTRO DE LIBROS
+void regLibro(Libros *&lib){
+    Libros *nuevo;
+    Libros *aux;
+    string rta;
+    cin.ignore();//LIMPIEZA DE BUFFER DE ENTRADA OBLIGATORIA ANTES DE CADA GETLINE QUE VIENE DE UN CIN(EN ESTE CASO EL DE LA FUNCION PRINCIPAL) 
+    do{//COMIENZA CICLO DE REPETICION
+        nuevo = new Libros;
+        cout<<"Ingrese Titulo del Libro: ";
+        //COMO DENTRO DEL CICLO LA ULTIMA ENTRADA ES UN GETLINE EL CIN.IGNORE VA FUERA DEL CICLO
+        getline(cin, nuevo->titulo);
+        cout<<"Ingrese Autor del Libro: ";
+        getline(cin, nuevo->autor);
+        cout<<"Ingrese Año de publicacion del Libro: ";
+        cin>>nuevo->anio_pub;
+        cout<<"Ingrese Cantidad de ejemplares del Libro: ";
+        cin>>nuevo->ejemplares;
+        if(lib == NULL){//SI ES EL PRIMER LIBRO QUE SE REGISTRA SE LE DA EL ID 1
+            nuevo->id = 1;
+            lib = nuevo;
+        }else{//SI HAY OTRO LIBRO REGISTRADO
+            aux = lib;//USANDO UN PUNTERO AUXILIAR
+            while(aux->sgte != NULL){//VAMOS AL ULTIMO
+                aux = aux->sgte;
+            }
+            nuevo->id = aux->id + 1;//AL LIBRO A INGRESAR LE DAMOS EL ULTIMO ID + 1
+            aux->sgte=nuevo;//LO AGREGAMOS A LA LISTA
+        }
+        nuevo->sgte = NULL;//PONEMOS EL ULTIMO SGTE EN NULL
+        cout<<"S para seguir cargando: ";
+        cin.ignore();
+        getline(cin,rta);
+    }while(rta=="S" || rta=="s");
+}
+//REGISTRO DE USUARIOS
+void regUsuario(Usuarios *&usuario){//SIMILAR REGLIBRO MISMOS COMENTARIOS
+    Usuarios *nuevo;
+    Usuarios *aux=usuario;
+    string rta;
+    cin.ignore();
+    do{
+        nuevo = new Usuarios;
+        cout<<"Ingrese Nombre del Usuario: ";
+        getline(cin, nuevo->nombre);
+        cout<<"Ingrese Apellido del Usuario: ";
+        getline(cin, nuevo->apellido);
+        cout<<"Ingrese mail del usuario: ";
+        cin>>nuevo->email;
+        if(usuario == NULL){
+            nuevo->id = 1;
+            usuario = nuevo;
+        }else{
+            aux = usuario;
+            while(aux->sgte != NULL){
+                aux = aux->sgte;
+            }
+            nuevo->id = aux->id + 1;
+            aux->sgte=nuevo;
+        }
+        nuevo->sgte=NULL;
+        cout<<"S para seguir cargando: ";
+        cin.ignore();
+        getline(cin,rta);
+    }while(rta=="S" || rta=="s");
+}
+//MOSTRAR LIBROS CARGADOS
+void consLibro(Libros *libro){
+    if (libro==NULL){//SI AUN NO SE CARGARON LIBROS SE AVISA
+        cout<<"NO HAY LIBROS CARGADOS\n";
+    }else{//SI SE CARGARON EMPEZAMOS A MOSTRAR
+        cout<<setw(50)<<"LIBROS"<<endl;//TITULO DE LA TABLA
+        cout<<string(100,'_')<<endl;//LINEA DE ARRIBA DE LA TABLA
+        //COLUMNAS setw(x) alinea a la derecha reservando x lugares para la palabra EJEMPLO setw(10)<<"ID" deja 8 lugares libres y ID suma 10
+        cout<<'|'<<setw(10)<<"ID"<<setw(20)<<"Titulo"<<setw(20)<<"Autor"<<setw(20)<<"Publicado"<<setw(20)<<"Ejemplares"<<setw(10)<<'|'<<endl;
+        while (libro!=NULL){//mientras haya libros los muestra
+            cout<<"|"<<string(99,'-')<<"|"<<endl;//string(99,'-') escribe 99 veces -
+            cout<<'|'<<setw(10)<<libro->id<<setw(20)<<libro->titulo<<setw(20)<<libro->autor<<setw(20)<<libro->anio_pub<<setw(20)<<libro->ejemplares<<setw(10)<<'|'<<endl;
+            libro=libro->sgte;//pasa al siguiente libro
+        }
+        cout<<"|"<<string(99,'_')<<"|"<<endl;
+    }
+}
+//MOSTRAR USUARIOS SIMIL A MOSTRAR LIBROS
+void consUsuario(Usuarios *user){
+    if (user==NULL){
+        cout<<"NO HAY USUARIOS CARGADOS\n";
+    }else{
+        cout<<setw(50)<<"USUARIOS"<<endl;
+        cout<<"|"<<string(79,'-')<<"|"<<endl;
+        cout<<'|'<<setw(10)<<"ID"<<setw(20)<<"Nombre"<<setw(20)<<"Apellido"<<setw(20)<<"Email"<<setw(10)<<'|'<<endl;
+        while (user!=NULL){
+            cout<<"|"<<string(79,'-')<<"|"<<endl;
+            cout<<'|'<<setw(10)<<user->id<<setw(20)<<user->nombre<<setw(20)<<user->apellido<<setw(20)<<user->email<<setw(10)<<'|'<<endl;
+            user=user->sgte;
+        }
+        cout<<"|"<<string(79,'_')<<"|"<<endl;
+    }
+}
+
+void prestar(Prestamos *&prestamo, Libros *libro,Usuarios *usuario){
+    Prestamos *nuevo;
+    Prestamos *aux;
+    string rta;
+    do{
+    nuevo = new Prestamos;
+    consUsuario(usuario);
+    cout<<"Ingrese Id del Usuario: ";
+    cin>>nuevo->usuario;
+    consLibro(libro);
+    cout<<"Ingrese Id del Libro: ";
+    cin>>nuevo->libro;
+    cout<<"Ingrese fecha inicio del prestamo (DD/MM/AA): ";
+    cin.ignore();
+    getline(cin,nuevo->fprestamo);
+    cout<<"Ingrese fecha inicio del prestamo (DD/MM/AA): ";
+    getline(cin,nuevo->fdevolucion);
+    nuevo->volvio=false;
+    nuevo->sgte = NULL;
+    if(prestamo == NULL){
+        nuevo->id = 1;
+        prestamo = nuevo;
+    }else{
+        aux = prestamo;
+        while(aux->sgte != NULL){
+            aux = aux->sgte;
+        }
+        nuevo->id = aux->id + 1;
+        aux->sgte=nuevo;
+    }
+    nuevo->sgte=NULL;
+    cout<<"S para seguir cargando: ";
+    getline(cin,rta);
+    }while(rta=="S" || rta=="s");
+}
+
+void consPrest(Prestamos *presta){
+    if (presta==NULL){
+        cout<<"NO HAY Prestamos CARGADOS\n";
+    }else{
+        cout<<setw(50)<<"PRESTAMOS"<<endl;
+        cout<<string(120,'_')<<endl;
+        cout<<'|'<<setw(10)<<"ID"<<setw(20)<<"USUARIO"<<setw(20)<<"LIBRO"<<setw(20)<<"INICIO"<<setw(20)<<"FIN"<<setw(20)<<"VOLVIO?"<<setw(10)<<'|'<<endl;
+
+        while (presta!=NULL){
+            cout<<"|"<<string(119,'-')<<"|"<<endl;
+            cout<<'|'<<setw(10)<<presta->id<<setw(20)<<presta->usuario<<setw(20)<<presta->libro<<setw(20)<<presta->fprestamo<<setw(20)<<presta->fdevolucion<<setw(20)<<presta->volvio<<setw(10)<<'|'<<endl;
+            presta=presta->sgte;
+        }
+        cout<<"|"<<string(119,'_')<<"|"<<endl;
+    }
+}
+
+void devolver(Prestamos *&prestamo){
+    int idprest;
+    Prestamos *aux=prestamo;
+    consPrest(prestamo);
+    cout<<"Cual prestamo finalizo? 0 si ninguno";
+    cin>>idprest;
+    while (aux->id!=idprest){
+        aux=aux->sgte;
+    }
+    aux->volvio=true;
+}
+void histUsuario(Prestamos *prestamo, Usuarios *user){
+    int idUsuario;
+    Prestamos *aux=prestamo;
+    consUsuario(user);
+    cout<<"Ingrese el usuario del que quiere consultar el historial: ";
+    cin>>idUsuario;
+    cout<<setw(50)<<"HISTORIAL USUARIO "<<idUsuario<<endl;
+    cout<<string(100,'_')<<endl;
+    cout<<'|'<<setw(10)<<"ID"<<setw(20)<<"LIBRO"<<setw(20)<<"INICIO"<<setw(20)<<"FIN"<<setw(20)<<"VOLVIO?"<<setw(10)<<'|'<<endl;
+    while (aux!=NULL){
+        if (aux->usuario==idUsuario){
+        cout<<"|"<<string(99,'-')<<"|"<<endl;
+        cout<<'|'<<setw(10)<<aux->id<<setw(20)<<aux->libro<<setw(20)<<aux->fprestamo<<setw(20)<<aux->fdevolucion<<setw(20)<<aux->volvio<<setw(10)<<'|'<<endl;
+    }
+    aux=aux->sgte;
+    }
+    cout<<"|"<<string(99,'_')<<"|"<<endl;
+}
+int menu(){
+    int op;
+    cout<<"\t\tBIENENIDO A LA BIBLIO!!!\n";
+    cout<<"\t1) Registrar Libro\n";
+    cout<<"\t2) Registrar Usuario\n";
+    cout<<"\t3) Consultar Libro\n";
+    cout<<"\t4) Realizar Prestamo\n";
+    cout<<"\t5) Registrar Devolucion\n";
+    cout<<"\t6) Historial Usuario\n";
+    cout<<"\t7) Salir\n";
+    cout<<"Ingrese una opcion: ";
+    cin>>op;
+    return op;
+}

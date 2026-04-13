@@ -3,28 +3,90 @@
 #include <string>
 using namespace std;
 
-// 1. EL MOLDE (La ficha del libro)
-struct Libro {
-    int id;
-    string titulo;
-    string autor;
-    int anio_publicacion;
-    int ejemplares_disponibles;
+// 1. Definicion estructuras
+class Libros{
+ private:
+ int id;
+ string titulo;
+ string autor;
+ int anio_publi;
+ int ejemplares;
+ Libros *sgte; //es el puntero
+
+ public:
+ Libros(){ //el metodo constructor lo q nos hace poner el "chocolate" dentro del "molde", todos los libros tienen los atributos a continuacion
+  //cin.ignore;
+  cout <<"Ingrese nombre del libro";
+  getline (cin, titulo); //lee este titulo, lleva getline porq sino no te toma los espacios
+  cout <<"Ingrese nombre del autor";
+  getline (cin, autor);
+  cout <<"Ingrese anio de publicacion del libro";
+  cin>>anio_publi;
+  cin.ignore();
+  cout <<"Ingrese cantidad de ejemplares del libro";
+  cin>>ejemplares;
+  cin.ignore();
+  sgte=NULL;
+  } 
+  //cuando vos creas un libro el pun tero siempra apunta al último pq sino nunca encontraria el final.
+  void mostrarLibro(){ //metodo para mostrar el libro, empiezo mostrando el titulo nada más pq si
+    cout<<titulo<<endl;
+    cout<<autor<<endl;
+    cout<<anio_publi<<endl;
+    cout<<ejemplares<<endl;
+  }
 };
 
-struct Usuario {
+///Clase 
+class Usuario {
+    private:
     int id;
     string nombre;
     string apellido;
     string email;
+    Usuario*sgte;
+
+    public:
+    Usuario(){
+        cout<<"Ingrese nombre del usuario: ";
+        getline(cin, nombre);
+        cout<<"Ingrese apellido del usuario: ";
+        getline(cin, apellido);
+        cout<<"Ingrese email del usuario: ";
+        getline(cin, email);
+        sgte = NULL;
+    };
+
+    void mostrarUsuario(){
+        cout<<"Nombre: "<<nombre<<endl;
+        cout<<"Apellido: "<<apellido<<endl;
+        cout<<"Email: "<<email<<endl;
+    }
 };
 
-struct Prestamo{
+class Prestamo{
+ private:
  int id_prestamo;
  int id_usuario;
  int id_libro;
  string fecha_prestamo;
  string fecha_devolucion;
+ Prestamo*sgte;
+
+    public:
+    Prestamo(){
+        cout<<"Ingrese ID del usuario: ";
+        cin>>id_usuario;
+        cin.ignore();
+        cout<<"Ingrese ID del libro: ";
+        cin>>id_libro;
+        cin.ignore();
+        cout<<"Ingrese fecha de prestamo (DD/MM/AAAA): ";
+        getline(cin, fecha_prestamo);
+        cout<<"Ingrese fecha de devolucion (DD/MM/AAAA): ";
+        getline(cin, fecha_devolucion);
+        sgte = NULL;
+    }
 };
 
 // 2. LA FUNCIÓN DE REGISTRO
@@ -38,7 +100,7 @@ void registrarLibro(vector<Libro> &estante) {
     
     cin.ignore(); // Limpieza necesaria antes de leer texto
     cout << "Titulo: ";
-    getline(cin, fichaNueva.titulo);
+    getline(cin, fichaNueva.titulo); ///Para variables string
     
     cout << "Autor: ";
     getline(cin, fichaNueva.autor);
