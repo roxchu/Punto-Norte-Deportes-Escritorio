@@ -47,6 +47,7 @@ public class SidebarPanel extends JPanel {
     private JTextField historialUsuario, historialOperacion, historialFecha;
     private JComboBox<String> historialModulo;
     private Consumer<String[]> aplicarFiltrosHistorial = valores -> {};
+    private Runnable refrescarPanel = () -> {};
     private List<Categoria> categoriasFiltro = new java.util.ArrayList<>();
 
     public SidebarPanel(Runnable onCuenta, Runnable onSalir) {
@@ -89,13 +90,6 @@ public class SidebarPanel extends JPanel {
         accesibilidad.setPreferredSize(new Dimension(190, 34));
         accesibilidad.setMaximumSize(new Dimension(190, 34));
 
-        JPanel pieDesplazable = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        pieDesplazable.setOpaque(false);
-        pieDesplazable.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
-        pieDesplazable.setBorder(BorderFactory.createEmptyBorder(18, 0, 12, 0));
-        pieDesplazable.add(accesibilidad);
-        superior.add(pieDesplazable);
-
         JScrollPane scrollSuperior = new JScrollPane(superior,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -103,6 +97,18 @@ public class SidebarPanel extends JPanel {
         scrollSuperior.setOpaque(false);
         scrollSuperior.getViewport().setOpaque(false);
         add(scrollSuperior, BorderLayout.CENTER);
+
+        // El pie queda fijo fuera del contenido desplazable. Reservamos a la
+        // derecha el ancho del scrollbar para centrar el botón solo en el área azul.
+        JPanel pieFijo = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pieFijo.setOpaque(false);
+        pieFijo.setBorder(BorderFactory.createEmptyBorder(8, 0, 18, 16));
+        pieFijo.add(accesibilidad);
+        add(pieFijo, BorderLayout.SOUTH);
+    }
+
+    public void setRefrescarPanel(Runnable accion) {
+        refrescarPanel = accion == null ? () -> {} : accion;
     }
 
     private JPanel crearLogo() {
@@ -278,7 +284,7 @@ public class SidebarPanel extends JPanel {
         panel.add(campoSidebar());
 
         panel.add(espacio());
-        panel.add(etiquetaBlanca("Estado del pedido"));
+        panel.add(etiquetaBlanca("Estado de la orden de compra"));
         panel.add(comboSidebar(
                 "Todos",
                 "Solicitado",
@@ -294,6 +300,13 @@ public class SidebarPanel extends JPanel {
 
         panel.add(Box.createVerticalStrut(12));
         panel.add(limpiar);
+
+        JButton refrescar = ComponentesUI.boton("↻ Refrescar panel", Estilos.CORAL, Estilos.AZUL);
+        refrescar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        refrescar.setToolTipText("Actualizar los datos de proveedores y compras");
+        refrescar.addActionListener(e -> refrescarPanel.run());
+        panel.add(Box.createVerticalStrut(7));
+        panel.add(refrescar);
 
         return panel;
     }

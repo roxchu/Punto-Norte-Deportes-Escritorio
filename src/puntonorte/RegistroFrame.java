@@ -77,8 +77,7 @@ public class RegistroFrame extends JFrame {
 
         JComboBox<String> rol = ComponentesUI.combo(
                 "Vendedor",
-                "Personal de depósito",
-                "Encargado"
+                "Personal de depósito"
         );
 
         JPanel fila1 = filaDoble(
@@ -98,13 +97,9 @@ public class RegistroFrame extends JFrame {
         rolPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
 
         JButton enviar = ComponentesUI.boton("→ Enviar solicitud", Estilos.CORAL, Estilos.AZUL);
-        enviar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        enviar.setAlignmentX(LEFT_ALIGNMENT);
 
         JButton volver = ComponentesUI.boton("← Volver al inicio de sesión", Estilos.BLANCO, Estilos.AZUL);
         volver.setBorder(BorderFactory.createLineBorder(Estilos.AZUL_CLARO));
-        volver.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        volver.setAlignmentX(LEFT_ALIGNMENT);
 
         enviar.addActionListener(e -> {
             try {
@@ -139,9 +134,9 @@ public class RegistroFrame extends JFrame {
         form.add(Box.createVerticalStrut(10));
         form.add(rolPanel);
         form.add(Box.createVerticalStrut(20));
-        form.add(enviar);
+        form.add(ComponentesUI.filaBotonCentrada(enviar, 320, 38));
         form.add(Box.createVerticalStrut(9));
-        form.add(volver);
+        form.add(ComponentesUI.filaBotonCentrada(volver, 320, 36));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 30, 20, 30);

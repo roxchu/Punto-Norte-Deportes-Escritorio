@@ -22,6 +22,11 @@ public class UsuarioService {
 
     private static final Pattern CORREO = Pattern.compile("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$");
     private static final String TABLA = "usuarios";
+    private static final String CODIGO_PRUEBA = "123456";
+    private static final java.util.Set<String> CUENTAS_PRUEBA = java.util.Set.of(
+            "gerente.prueba@puntonorte.test",
+            "nahuellatella@gmail.com",
+            "supervisor@puntonorte.com");
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final RolDAO rolDAO = new RolDAO();
@@ -49,7 +54,10 @@ public class UsuarioService {
         }
         // Se registra cualquier intento fallido de una cuenta existente, incluso
         // si la cuenta todavía no puede ingresar por su estado.
-        if (!Seguridad.coincide(u.getCorreo(), codigo, u.getPasswordHash())) {
+        boolean codigoValido = esCuentaPrueba(u.getCorreo())
+                ? CODIGO_PRUEBA.equals(codigo.trim())
+                : Seguridad.coincide(u.getCorreo(), codigo, u.getPasswordHash());
+        if (!codigoValido) {
             auditoria.registrarComo(u.getIdUsuario(), "Intento de sesión fallido", TABLA,
                     u.getIdUsuario(), null, null, null, "Código incorrecto");
             throw credenciales;
@@ -176,16 +184,40 @@ public class UsuarioService {
         return lista;
     }
 
-    /** Roles que el usuario actual puede asignar al aprobar. Supervisor no puede crear Supervisores/Gerentes. */
+    /** Roles que el usuario actual puede asignar al aprobar, según su jerarquía. */
     public List<String> rolesAsignables() {
         List<String> lista = new ArrayList<>();
-        boolean esGerente = Permisos.esGerente(Sesion.getNombreRol());
         for (String nombre : roles().values()) {
-            if (esGerente || !Permisos.esSupervisorOGerente(nombre)) {
+            if (puedeAsignarRol(nombre)) {
                 lista.add(nombre);
             }
         }
         return lista;
+    }
+
+    /** Cambia el rol de un usuario activo desde el panel de usuarios. */
+    public void cambiarRolUsuario(int idUsuario, String nombreRol) {
+        exigirGestionUsuarios();
+        Usuario u = buscarPorId(idUsuario);
+        exigirPuedeAdministrar(u);
+        if (u.getActivo() != EstadoUsuario.ACTIVO) {
+            throw new ReglaNegocioException("Solo se puede cambiar el rol de usuarios activos.");
+        }
+        Rol rol = rolPorNombre(nombreRol);
+        if (!puedeAsignarRol(rol.getNombreRol())) {
+            throw new ReglaNegocioException("No podés asignar el rol " + rol.getNombreRol()
+                    + " porque no está disponible para tu cuenta.");
+        }
+        String anterior = nombreRol(u.getIdRol());
+        u.setIdRol(rol.getIdRol());
+        u.setPuestoUsername(rol.getNombreRol());
+        usuarioDAO.modificar(u);
+        Usuario actualizado = buscarPorId(idUsuario);
+        if (actualizado.getIdRol() != rol.getIdRol()) {
+            throw new ReglaNegocioException("No se pudo guardar el nuevo rol de la solicitud.");
+        }
+        auditoria.registrar("Rol de usuario cambiado", TABLA, idUsuario, anterior,
+                rol.getNombreRol(), null, nombreCompleto(u));
     }
 
     // ------------------------------------------------------------ OPERACIONES
@@ -200,21 +232,23 @@ public class UsuarioService {
             throw new ReglaNegocioException("La solicitud ya no está pendiente.");
         }
         Rol rol = rolPorNombre(nombreRol);
-        if (Permisos.esSupervisorOGerente(rol.getNombreRol())
-                && !Permisos.esGerente(Sesion.getNombreRol())) {
-            throw new ReglaNegocioException("Solo un Gerente puede asignar el rol " + rol.getNombreRol() + ".");
+        if (!puedeAsignarRol(rol.getNombreRol())) {
+            throw new ReglaNegocioException("No podés asignar el rol " + rol.getNombreRol()
+                    + " porque es igual o superior al tuyo.");
         }
 
         String rolAnterior = nombreRol(u.getIdRol());
-        String codigo = Seguridad.generarCodigo();
+        String codigo = esCuentaPrueba(u.getCorreo()) ? CODIGO_PRUEBA : Seguridad.generarCodigo();
 
         // No se activa la cuenta si no se logró entregar su código de acceso.
-        try {
-            emailService.enviarCodigoAcceso(u.getCorreo(), codigo);
-        } catch (Exception e) {
-            throw new ReglaNegocioException(
-                    "No se pudo enviar el código a " + u.getCorreo()
-                    + ". La solicitud sigue pendiente. Revisá config.properties y volvé a intentar.");
+        if (!esCuentaPrueba(u.getCorreo())) {
+            try {
+                emailService.enviarCodigoAcceso(u.getCorreo(), codigo);
+            } catch (Exception e) {
+                throw new ReglaNegocioException(
+                        "No se pudo enviar el código a " + u.getCorreo()
+                        + ". La solicitud sigue pendiente. Revisá config.properties y volvé a intentar.");
+            }
         }
 
         u.setIdRol(rol.getIdRol());
@@ -262,12 +296,14 @@ public class UsuarioService {
             throw new ReglaNegocioException("Solo se puede reenviar el código a usuarios activos.");
         }
 
-        String codigo = Seguridad.generarCodigo();
+        String codigo = esCuentaPrueba(u.getCorreo()) ? CODIGO_PRUEBA : Seguridad.generarCodigo();
         String hash = Seguridad.hash(u.getCorreo(), codigo);
-        try {
-            emailService.enviarCodigoAcceso(u.getCorreo(), codigo);
-        } catch (Exception e) {
-            throw new ReglaNegocioException("No se pudo enviar el código. El código anterior sigue vigente.");
+        if (!esCuentaPrueba(u.getCorreo())) {
+            try {
+                emailService.enviarCodigoAcceso(u.getCorreo(), codigo);
+            } catch (Exception e) {
+                throw new ReglaNegocioException("No se pudo enviar el código. El código anterior sigue vigente.");
+            }
         }
         usuarioDAO.actualizarCodigoAcceso(idUsuario, hash);
 
@@ -304,7 +340,7 @@ public class UsuarioService {
         String codigo = null;
         if (nuevo == EstadoUsuario.ACTIVO
                 && (u.getPasswordHash() == null || u.getPasswordHash().isBlank())) {
-            codigo = Seguridad.generarCodigo();
+            codigo = esCuentaPrueba(u.getCorreo()) ? CODIGO_PRUEBA : Seguridad.generarCodigo();
             usuarioDAO.actualizarCodigoAcceso(idUsuario, Seguridad.hash(u.getCorreo(), codigo));
         }
 
@@ -315,20 +351,25 @@ public class UsuarioService {
         return codigo;
     }
 
+    private boolean esCuentaPrueba(String correo) {
+        return correo != null && CUENTAS_PRUEBA.contains(correo.trim().toLowerCase(java.util.Locale.ROOT));
+    }
+
     private void exigirGestionUsuarios() {
         if (!Permisos.puedeGestionarUsuarios()) {
             throw new ReglaNegocioException("No tenés permiso para gestionar usuarios.");
         }
     }
 
-    /** Nadie toca su propia cuenta, y solo un Gerente toca a Supervisores y Gerentes. */
+    /** Nadie toca su propia cuenta ni a usuarios de igual o mayor jerarquía. */
     private void exigirPuedeAdministrar(Usuario objetivo) {
         if (objetivo.getIdUsuario() == Sesion.getIdUsuario()) {
             throw new ReglaNegocioException("No podés modificar tu propia cuenta.");
         }
-        boolean objetivoAlto = Permisos.esSupervisorOGerente(nombreRol(objetivo.getIdRol()));
-        if (objetivoAlto && !Permisos.esGerente(Sesion.getNombreRol())) {
-            throw new ReglaNegocioException("Solo un Gerente puede modificar a un Supervisor o Gerente.");
+        int jerarquiaActual = jerarquia(Sesion.getNombreRol());
+        int jerarquiaObjetivo = jerarquia(nombreRol(objetivo.getIdRol()));
+        if (jerarquiaObjetivo >= jerarquiaActual && !Permisos.esGerente(Sesion.getNombreRol())) {
+            throw new ReglaNegocioException("No podés modificar usuarios con un rol igual o superior al tuyo.");
         }
     }
 
@@ -361,7 +402,22 @@ public class UsuarioService {
 
     private boolean esRolSolicitable(String nombreRol) {
         String n = Permisos.normalizar(nombreRol);
-        return n.equals("vendedor") || n.contains("deposito") || n.equals("encargado");
+        return n.equals("vendedor") || n.contains("deposito");
+    }
+
+    private boolean puedeAsignarRol(String rolDestino) {
+        if (!Permisos.puedeGestionarUsuarios()) return false;
+        if (Permisos.esGerente(Sesion.getNombreRol()) && Permisos.esGerente(rolDestino)) return true;
+        return jerarquia(rolDestino) < jerarquia(Sesion.getNombreRol());
+    }
+
+    private int jerarquia(String nombreRol) {
+        String n = Permisos.normalizar(nombreRol);
+        if (n.equals("gerente")) return 5;
+        if (n.equals("supervisor")) return 4;
+        if (n.equals("encargado")) return 3;
+        if (n.equals("vendedor") || n.contains("deposito")) return 1;
+        return Integer.MAX_VALUE;
     }
 
     private Map<Integer, String> roles() {

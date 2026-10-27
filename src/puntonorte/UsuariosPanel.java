@@ -8,6 +8,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -25,6 +26,7 @@ public class UsuariosPanel extends JPanel {
     private final JFrame owner;
     private final UsuarioService usuarioService = new UsuarioService();
     private final JTabbedPane tabs = new JTabbedPane();
+    private final javax.swing.JLabel[] indicadores = new javax.swing.JLabel[4];
     private String filtroBusqueda = "";
 
     public UsuariosPanel(JFrame owner) {
@@ -32,16 +34,25 @@ public class UsuariosPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(Estilos.FONDO);
         setBorder(BorderFactory.createEmptyBorder(26, 26, 26, 26));
-        JPanel contenido = new JPanel();
+        JPanel contenido = new JPanel(new BorderLayout(0, 16));
         contenido.setOpaque(false);
-        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
-        contenido.add(ComponentesUI.titulo("Gestión de Usuarios"));
-        contenido.add(Box.createVerticalStrut(5));
-        contenido.add(ComponentesUI.subtitulo("Solicitudes y estados de las cuentas."));
-        contenido.add(Box.createVerticalStrut(18));
-        tabs.setFont(Estilos.FUENTE_NEGRITA);
-        tabs.setAlignmentX(LEFT_ALIGNMENT);
-        contenido.add(tabs);
+        JPanel encabezado = new JPanel();
+        encabezado.setOpaque(false);
+        encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
+        encabezado.add(ComponentesUI.titulo("Gestión de Usuarios"));
+        encabezado.add(Box.createVerticalStrut(5));
+        encabezado.add(ComponentesUI.subtitulo("Solicitudes y estados de las cuentas."));
+        contenido.add(encabezado, BorderLayout.NORTH);
+
+        ComponentesUI.estilizarPestanas(tabs);
+        JPanel cuerpo = new JPanel(new BorderLayout(0, 14));
+        cuerpo.setOpaque(false);
+        cuerpo.add(ComponentesUI.resumenVisual(
+                new String[] {"Pendientes", "Activos", "Pausados", "Desactivados"}, indicadores),
+                BorderLayout.NORTH);
+        JPanel seccion = ComponentesUI.tarjeta("Listado de usuarios", tabs);
+        cuerpo.add(seccion, BorderLayout.CENTER);
+        contenido.add(cuerpo, BorderLayout.CENTER);
         add(contenido, BorderLayout.CENTER);
         recargar();
     }
@@ -49,8 +60,8 @@ public class UsuariosPanel extends JPanel {
     public final void recargar() {
         try {
             tabs.removeAll();
-            agregarTab("Solicitudes", EstadoUsuario.PENDIENTE);
             agregarTab("Activos", EstadoUsuario.ACTIVO);
+            agregarTab("Solicitudes", EstadoUsuario.PENDIENTE);
             agregarTab("Pausados", EstadoUsuario.PAUSADO);
             agregarTab("Desactivados", EstadoUsuario.DESACTIVADO);
             revalidate(); repaint();
@@ -66,6 +77,13 @@ public class UsuariosPanel extends JPanel {
             String consulta = filtroBusqueda.trim().toLowerCase(java.util.Locale.ROOT);
             usuarios.removeIf(u -> !textoUsuario(u).contains(consulta));
         }
+        int posicion = switch (estado) {
+            case PENDIENTE -> 0;
+            case ACTIVO -> 1;
+            case PAUSADO -> 2;
+            case DESACTIVADO -> 3;
+        };
+        indicadores[posicion].setText(String.valueOf(usuarios.size()));
         tabs.addTab(titulo + "  " + usuarios.size(), crearTabla(usuarios, estado));
     }
 
@@ -108,6 +126,8 @@ public class UsuariosPanel extends JPanel {
                     () -> pausar(seleccion(tabla, usuarios)));
             agregarBoton(acciones, "× Desactivar", Estilos.ROJO, java.awt.Color.WHITE,
                     () -> desactivar(seleccion(tabla, usuarios)));
+            agregarBoton(acciones, "Cambiar rol", Estilos.BLANCO, Estilos.AZUL,
+                    () -> cambiarRol(seleccion(tabla, usuarios)));
         } else if (estado == EstadoUsuario.PAUSADO) {
             agregarBoton(acciones, "↺ Reactivar", Estilos.CORAL, Estilos.AZUL,
                     () -> reactivar(seleccion(tabla, usuarios)));
@@ -142,6 +162,26 @@ public class UsuariosPanel extends JPanel {
 
     private void aprobar(Usuario u) {
         if (u != null) new AprobarUsuarioDialog(owner, u, usuarioService.rolesAsignables(), this::recargar).setVisible(true);
+    }
+    private void cambiarRol(Usuario usuario) {
+        if (usuario == null) return;
+        java.util.List<String> disponibles = usuarioService.rolesAsignables();
+        if (disponibles.isEmpty()) {
+            JOptionPane.showMessageDialog(owner, "No hay roles disponibles para asignar.",
+                    "Cambiar rol", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JComboBox<String> opciones = ComponentesUI.combo(disponibles.toArray(new String[0]));
+        opciones.setSelectedItem(usuarioService.nombreRol(usuario.getIdRol()));
+        int resultado = JOptionPane.showConfirmDialog(owner, opciones, "Seleccioná el nuevo rol",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (resultado != JOptionPane.OK_OPTION || opciones.getSelectedItem() == null) return;
+        try {
+            usuarioService.cambiarRolUsuario(usuario.getIdUsuario(), (String) opciones.getSelectedItem());
+            recargar();
+        } catch (ReglaNegocioException ex) {
+            mostrarError(ex);
+        }
     }
     private void rechazar(Usuario u) { ejecutarConMotivo(u, "Rechazar solicitud", usuarioService::rechazar); }
     private void pausar(Usuario u) { ejecutarConMotivo(u, "Pausar usuario", usuarioService::pausar); }

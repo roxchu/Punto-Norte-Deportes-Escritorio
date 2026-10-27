@@ -28,6 +28,7 @@ public class EmisorDAO {
             e.setCuit(rs.getString("cuit"));
             e.setCondicionIva(rs.getString("condicionIva"));
             e.setDomicilioComercial(rs.getString("domicilioComercial"));
+            e.setLocalidad(rs.getString("localidad"));
             e.setIngresosBrutos(rs.getString("ingresosBrutos"));
             Date inicio = rs.getDate("inicioActividades");
             e.setInicioActividades(inicio == null ? null : inicio.toLocalDate());

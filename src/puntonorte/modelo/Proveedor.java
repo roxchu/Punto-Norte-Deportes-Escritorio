@@ -7,6 +7,7 @@ public class Proveedor{
     private String CUIT;
     private String telefono;
     private String correo;
+    private String condicionPago = "Contado";
 
     public Proveedor(){
     }
@@ -18,6 +19,12 @@ public class Proveedor{
     this.CUIT = CUIT;
     this.telefono = telefono;
     this.correo = correo;
+    }
+
+    public Proveedor(int idProveedor, String nombre, String razonSocial, String CUIT, String telefono,
+            String correo, String condicionPago) {
+        this(idProveedor, nombre, razonSocial, CUIT, telefono, correo);
+        this.condicionPago = condicionPago == null || condicionPago.isBlank() ? "Contado" : condicionPago;
     }
 
 	public int getIdProveedor() {
@@ -64,8 +71,13 @@ public class Proveedor{
 		return correo;
 	}
 
+	public String getCondicionPago() { return condicionPago; }
+	public void setCondicionPago(String condicionPago) {
+		this.condicionPago = condicionPago == null || condicionPago.isBlank() ? "Contado" : condicionPago.trim();
+	}
+
 	@Override
-	public String toString() { return nombre == null ? "Proveedor" : nombre; }
+	public String toString() { return razonSocial == null || razonSocial.isBlank() ? "Proveedor" : razonSocial; }
 
 	public void setCorreo(String correo) {
 		this.correo = correo;

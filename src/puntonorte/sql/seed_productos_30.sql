@@ -95,10 +95,10 @@ WHERE existente.idProducto IS NULL;
 
 -- Una variante por producto para que el catálogo quede disponible en Ventas.
 INSERT INTO producto_variantes
-    (idProducto, talle, color, sku, codigoBarras, precioVenta, costoRef, stockMinimo, stockMaximo, activo)
-SELECT p.idProducto, d.talle, d.color, d.sku, NULL, d.precioVenta, d.costoRef, 2, 0, 1
+    (idProducto, talle, color, sku, codigoBarras, precioVenta, costoCotizacion, stockMinimo, stockMaximo, activo)
+SELECT p.idProducto, d.talle, d.color, d.sku, NULL, d.precioVenta, d.costoCotizacion, 2, 0, 1
 FROM (
-    SELECT 'Buzo con capucha Nike' producto, 'L' talle, 'Negro' color, 'BUZCAPNI01' sku, 62000.00 precioVenta, 35000.00 costoRef
+    SELECT 'Buzo con capucha Nike' producto, 'L' talle, 'Negro' color, 'BUZCAPNI01' sku, 62000.00 precioVenta, 35000.00 costoCotizacion
     UNION ALL SELECT 'Campera impermeable Adidas', 'M', 'Azul', 'CAMIMPAD01', 98000, 57000
     UNION ALL SELECT 'Remera deportiva Puma', 'M', 'Blanco', 'REMDEPPU01', 32000, 17000
     UNION ALL SELECT 'Short de entrenamiento Nike', 'M', 'Negro', 'SHOENTNI01', 35000, 19000

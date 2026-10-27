@@ -10,7 +10,7 @@ public class ProductoVariante {
     private String SKU;
     private String codigoBarras;
     private double precioVenta;
-    private double costoRef;
+    private double costoCotizacion;
     // Precio específico del proveedor seleccionado (null cuando todavía no se informó).
     private Double costoProveedor;
     private int cantidadPendientePedido;
@@ -31,7 +31,7 @@ public class ProductoVariante {
    public ProductoVariante() {
    }
 
-   public ProductoVariante(int idVariante, int idProducto, String talle, String color, String SKU, String codigoBarras, double precioVenta, double costoRef, int stockMinimo, int stockMaximo){
+   public ProductoVariante(int idVariante, int idProducto, String talle, String color, String SKU, String codigoBarras, double precioVenta, double costoCotizacion, int stockMinimo, int stockMaximo){
     this.idVariante = idVariante;
     this.idProducto = idProducto;
     this.talle =  talle;
@@ -39,7 +39,7 @@ public class ProductoVariante {
     this.SKU = SKU;
     this.codigoBarras = codigoBarras;
     this.precioVenta = precioVenta;
-    this.costoRef = costoRef;
+    this.costoCotizacion = costoCotizacion;
     this.stockMinimo = stockMinimo;
     this.stockMaximo = stockMaximo;
    }
@@ -100,12 +100,12 @@ public class ProductoVariante {
 	this.precioVenta = precioVenta;
    }
 
-   public double getCostoRef() {
-	return costoRef;
+   public double getCostoCotizacion() {
+	return costoCotizacion;
    }
 
-   public void setCostoRef(double costoRef) {
-	this.costoRef = costoRef;
+   public void setCostoCotizacion(double costoCotizacion) {
+	this.costoCotizacion = costoCotizacion;
    }
 
    public Double getCostoProveedor() { return costoProveedor; }

@@ -64,7 +64,7 @@ public class Productoservicio {
             ArrayList<ProductoVariante> lista = varianteDAO.buscarCatalogo(f);
             if (!Permisos.puedeVerCostos()) {
                 for (ProductoVariante v : lista) {
-                    v.setCostoRef(0);
+                    v.setCostoCotizacion(0);
                 }
             }
             return lista;
@@ -174,6 +174,9 @@ public class Productoservicio {
             List<ProductoVariante> variantes) {
 
         exigirCatalogo();
+        if (!Permisos.puedeCrearProducto()) {
+            throw new ReglaNegocioException("Solo Supervisor o Gerente puede dar de alta productos y definir sus precios.");
+        }
 
         nombre = limpio(nombre);
         descripcion = limpio(descripcion);
@@ -320,6 +323,12 @@ public class Productoservicio {
             }
 
             boolean cambioPrecio = Double.compare(anterior.getPrecioVenta(), v.getPrecioVenta()) != 0;
+            if (cambioPrecio && !Permisos.puedeModificarPrecio()) {
+                throw new ReglaNegocioException("Solo Supervisor o Gerente puede modificar el precio de venta.");
+            }
+            // Un usuario sin acceso a costos no puede alterarlos ni borrarlos accidentalmente
+            // al editar los demás datos de la variante.
+            if (!Permisos.puedeVerCostos()) v.setCostoCotizacion(anterior.getCostoCotizacion());
             String antes = resumen(anterior);
             v.setIdProducto(anterior.getIdProducto());   // una variante no cambia de producto
             String despues = resumen(v);
@@ -488,8 +497,8 @@ public class Productoservicio {
         if (!(v.getPrecioVenta() > 0) || Double.isInfinite(v.getPrecioVenta())) {
             throw new ReglaNegocioException(quien + " (" + v.getSKU() + "): el precio debe ser mayor a 0.");
         }
-        if (!(v.getCostoRef() >= 0) || Double.isInfinite(v.getCostoRef())) {
-            throw new ReglaNegocioException(quien + " (" + v.getSKU() + "): el costo no puede ser negativo.");
+        if (!(v.getCostoCotizacion() >= 0) || Double.isInfinite(v.getCostoCotizacion())) {
+            throw new ReglaNegocioException(quien + " (" + v.getSKU() + "): el costo de cotización no puede ser negativo.");
         }
         if (v.getStockMinimo() < 0 || v.getStockMaximo() < 0) {
             throw new ReglaNegocioException(quien + " (" + v.getSKU() + "): el stock mínimo y máximo no pueden ser negativos.");
@@ -534,7 +543,7 @@ public class Productoservicio {
     private String resumen(ProductoVariante v) {
         return "sku=" + v.getSKU() + "; talle=" + v.getTalle() + "; color=" + v.getColor()
                 + "; barras=" + (v.getCodigoBarras() == null ? "-" : v.getCodigoBarras())
-                + "; precio=" + dinero(v.getPrecioVenta()) + "; costo=" + dinero(v.getCostoRef())
+                + "; precio=" + dinero(v.getPrecioVenta()) + "; costo de cotización=" + dinero(v.getCostoCotizacion())
                 + "; mín=" + v.getStockMinimo() + "; máx=" + v.getStockMaximo();
     }
 

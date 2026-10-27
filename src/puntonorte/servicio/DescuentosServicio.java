@@ -101,7 +101,7 @@ public class DescuentosServicio {
 
     private void exigirPermiso() {
         if (!Sesion.activa()) throw new ReglaNegocioException("No hay una sesión iniciada.");
-        if (!Permisos.puedeGestionarDescuentos()) throw new ReglaNegocioException("Solo el Supervisor puede gestionar descuentos.");
+        if (!Permisos.puedeGestionarDescuentos()) throw new ReglaNegocioException("Solo Supervisor o Gerente puede gestionar descuentos.");
     }
 
     private ReglaNegocioException error(String accion, SQLException e) {

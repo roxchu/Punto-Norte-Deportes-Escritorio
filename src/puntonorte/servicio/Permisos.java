@@ -31,12 +31,17 @@ public final class Permisos {
         return esGerente(rol) || esSupervisor(rol);
     }
 
+    /** Encargado, Supervisor y Gerente pueden resolver solicitudes operativas. */
+    public static boolean puedeResolverSolicitudesOperativas(String rol) {
+        return esSupervisorOGerente(rol) || normalizar(rol).equals("encargado");
+    }
+
     public static boolean puedeGestionarUsuarios() {
         return esSupervisorOGerente(Sesion.getNombreRol());
     }
 
     public static boolean puedeGestionarDescuentos() {
-        return esSupervisor(Sesion.getNombreRol());
+        return esSupervisorOGerente(Sesion.getNombreRol());
     }
 
     public static boolean puedeVerHistorial() {
@@ -47,6 +52,21 @@ public final class Permisos {
     public static boolean puedeGestionarCatalogo() {
         String rol = Sesion.getNombreRol();
         return esSupervisorOGerente(rol) || normalizar(rol).equals("encargado");
+    }
+
+    /** Precios de venta y costos comerciales: solo Supervisor y Gerente. */
+    public static boolean puedeModificarPrecio() {
+        return esSupervisorOGerente(Sesion.getNombreRol());
+    }
+
+    /** Alta de productos y variantes: requiere definir precios, por eso es administrativa. */
+    public static boolean puedeCrearProducto() {
+        return puedeModificarPrecio();
+    }
+
+    /** Proveedores y órdenes de compra: gestión administrativa; Encargado y Depósito pueden consultar/recibir. */
+    public static boolean puedeGestionarCompras() {
+        return esSupervisorOGerente(Sesion.getNombreRol());
     }
 
     /** Costos y márgenes: solo Supervisor y Gerente (el Vendedor nunca los ve). */
@@ -72,23 +92,23 @@ public final class Permisos {
 
     /** Qué botones de la barra superior ve cada rol. */
     public static boolean puedeVerModulo(String modulo) {
-        if (normalizar(Sesion.getNombreRol()).equals("vendedor")) {
-            return modulo.equals("INICIO") || modulo.equals("PRODUCTOS") || modulo.equals("VENTAS");
-        }
-        if (modulo.equals("USUARIOS") || modulo.equals("HISTORIAL")) {
-            return esSupervisorOGerente(Sesion.getNombreRol());
-        }
-        if (modulo.equals("PROVEEDORES")) {
-            String rol = normalizar(Sesion.getNombreRol());
-            return esSupervisorOGerente(rol) || rol.equals("encargado") || rol.contains("deposito");
-        }
-        return true;
+        String rol = normalizar(Sesion.getNombreRol());
+        if (rol.equals("vendedor"))
+            return modulo.equals("INICIO") || modulo.equals("PRODUCTOS")
+                    || modulo.equals("VENTAS") || modulo.equals("CUENTA");
+        if (rol.contains("deposito"))
+            return modulo.equals("INICIO") || modulo.equals("PRODUCTOS")
+                    || modulo.equals("PROVEEDORES") || modulo.equals("CUENTA");
+        if (rol.equals("encargado"))
+            return modulo.equals("INICIO") || modulo.equals("PRODUCTOS")
+                    || modulo.equals("PROVEEDORES") || modulo.equals("VENTAS") || modulo.equals("CUENTA");
+        return esSupervisorOGerente(rol);
     }
 
-    /** Registrar ventas: Vendedor, Encargado, Supervisor y Gerente. El personal de Depósito NO vende. */
+    /** Según la entrevista, solo Vendedor registra ventas; los demás perfiles las consultan o supervisan. */
     public static boolean puedeVender() {
         String rol = normalizar(Sesion.getNombreRol());
-        return rol.equals("vendedor") || rol.equals("encargado") || esSupervisorOGerente(rol);
+        return rol.equals("vendedor");
     }
 
     /** Ver las ventas de todos: Encargado, Supervisor y Gerente. El Vendedor solo ve las suyas. */

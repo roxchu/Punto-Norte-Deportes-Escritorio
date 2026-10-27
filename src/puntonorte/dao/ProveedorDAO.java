@@ -37,8 +37,8 @@ public class ProveedorDAO {
     // INSERT
     public void guardar(Proveedor proveedor) {
         String sql = "INSERT INTO proveedor "
-                + "(razonSocial, nombre, cuit, telefono, correo) "
-                + "VALUES (?, ?, ?, ?, ?)";
+                + "(razonSocial, nombre, cuit, telefono, correo, condicionPago) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
 
         try {
             Connection conexion = ConexionBD.conectar();
@@ -49,6 +49,7 @@ public class ProveedorDAO {
             ps.setString(3, proveedor.getCUIT());
             ps.setString(4, proveedor.getTelefono());
             ps.setString(5, proveedor.getCorreo());
+            ps.setString(6, proveedor.getCondicionPago());
 
             ps.executeUpdate();
 
@@ -75,6 +76,7 @@ public class ProveedorDAO {
                 proveedor.setCUIT(rs.getString("cuit"));
                 proveedor.setTelefono(rs.getString("telefono"));
                 proveedor.setCorreo(rs.getString("correo"));
+                proveedor.setCondicionPago(rs.getString("condicionPago"));
                 lista.add(proveedor);
             }
 
@@ -88,7 +90,7 @@ public class ProveedorDAO {
     // UPDATE
     public void modificar(Proveedor proveedor) {
         String sql = "UPDATE proveedor SET "
-                + "razonSocial = ?, nombre = ?, cuit = ?, telefono = ?, correo = ? "
+                + "razonSocial = ?, nombre = ?, cuit = ?, telefono = ?, correo = ?, condicionPago = ? "
                 + "WHERE idProveedor = ?";
 
         try {
@@ -100,7 +102,8 @@ public class ProveedorDAO {
             ps.setString(3, proveedor.getCUIT());
             ps.setString(4, proveedor.getTelefono());
             ps.setString(5, proveedor.getCorreo());
-            ps.setInt(6, proveedor.getIdProveedor()); // TODO: getter del id real
+            ps.setString(6, proveedor.getCondicionPago());
+            ps.setInt(7, proveedor.getIdProveedor()); // TODO: getter del id real
 
             ps.executeUpdate();
 

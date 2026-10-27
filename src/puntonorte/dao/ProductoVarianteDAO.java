@@ -24,7 +24,7 @@ public class ProductoVarianteDAO {
     // INSERT (la columna activo toma su valor por defecto = 1)
     public void guardar(ProductoVariante productovariante) {
         String sql = "INSERT INTO producto_variantes "
-                + "(idProducto, talle, color, sku, codigoBarras, precioVenta, costoRef, stockMinimo, stockMaximo) "
+                + "(idProducto, talle, color, sku, codigoBarras, precioVenta, costoCotizacion, stockMinimo, stockMaximo) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try {
@@ -37,7 +37,7 @@ public class ProductoVarianteDAO {
             ps.setString(4, productovariante.getSKU());
             ps.setString(5, productovariante.getCodigoBarras());
             ps.setDouble(6, productovariante.getPrecioVenta());
-            ps.setDouble(7, productovariante.getCostoRef());
+            ps.setDouble(7, productovariante.getCostoCotizacion());
             ps.setInt(8, productovariante.getStockMinimo());
             ps.setInt(9, productovariante.getStockMaximo());
 
@@ -72,7 +72,7 @@ public class ProductoVarianteDAO {
     // UPDATE (no toca la columna activo: para eso está cambiarActivo)
     public void modificar(ProductoVariante productovariante) {
         String sql = "UPDATE producto_variantes SET "
-                + "idProducto = ?, talle = ?, color = ?, sku = ?, codigoBarras = ?, precioVenta = ?, costoRef = ?, stockMinimo = ?, stockMaximo = ? "
+                + "idProducto = ?, talle = ?, color = ?, sku = ?, codigoBarras = ?, precioVenta = ?, costoCotizacion = ?, stockMinimo = ?, stockMaximo = ? "
                 + "WHERE idVariante = ?";
 
         try {
@@ -85,7 +85,7 @@ public class ProductoVarianteDAO {
             ps.setString(4, productovariante.getSKU());
             ps.setString(5, productovariante.getCodigoBarras());
             ps.setDouble(6, productovariante.getPrecioVenta());
-            ps.setDouble(7, productovariante.getCostoRef());
+            ps.setDouble(7, productovariante.getCostoCotizacion());
             ps.setInt(8, productovariante.getStockMinimo());
             ps.setInt(9, productovariante.getStockMaximo());
             ps.setInt(10, productovariante.getIdVariante());
@@ -108,7 +108,7 @@ public class ProductoVarianteDAO {
      */
     public int guardar(Connection con, ProductoVariante v) throws SQLException {
         String sql = "INSERT INTO producto_variantes "
-                + "(idProducto, talle, color, sku, codigoBarras, precioVenta, costoRef, stockMinimo, stockMaximo, activo) "
+                + "(idProducto, talle, color, sku, codigoBarras, precioVenta, costoCotizacion, stockMinimo, stockMaximo, activo) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -119,7 +119,7 @@ public class ProductoVarianteDAO {
             ps.setString(4, v.getSKU());
             ps.setString(5, v.getCodigoBarras());
             ps.setDouble(6, v.getPrecioVenta());
-            ps.setDouble(7, v.getCostoRef());
+            ps.setDouble(7, v.getCostoCotizacion());
             ps.setInt(8, v.getStockMinimo());
             ps.setInt(9, v.getStockMaximo());
             ps.setBoolean(10, v.isActivo());
@@ -280,7 +280,7 @@ public class ProductoVarianteDAO {
         v.setSKU(rs.getString("sku"));
         v.setCodigoBarras(rs.getString("codigoBarras"));
         v.setPrecioVenta(rs.getDouble("precioVenta"));
-        v.setCostoRef(rs.getDouble("costoRef"));
+        v.setCostoCotizacion(rs.getDouble("costoCotizacion"));
         v.setStockMinimo(rs.getInt("stockMinimo"));
         v.setStockMaximo(rs.getInt("stockMaximo"));
         v.setActivo(rs.getBoolean("activo"));
@@ -293,7 +293,7 @@ public class ProductoVarianteDAO {
         StringBuilder sql = new StringBuilder(
                 "SELECT v.idVariante, p.idProducto, p.nombre, p.descripcion, "
               + "m.nombre AS marca, c.nombre AS categoria, "
-              + "v.talle, v.color, v.sku, v.codigoBarras, v.precioVenta, v.costoRef, "
+              + "v.talle, v.color, v.sku, v.codigoBarras, v.precioVenta, v.costoCotizacion, "
               + "v.stockMinimo, v.stockMaximo, "
               + "CASE WHEN v.activo = 1 AND p.activo = 1 THEN 1 ELSE 0 END AS activo, "
               + "COALESCE(SUM(s.cantidad), 0) AS stockTotal, "
@@ -350,7 +350,7 @@ public class ProductoVarianteDAO {
 
         // Se agrupa por todo lo que no es una suma, para que funcione también con ONLY_FULL_GROUP_BY.
         sql.append("GROUP BY v.idVariante, p.idProducto, p.nombre, p.descripcion, m.nombre, c.nombre, "
-                 + "v.talle, v.color, v.sku, v.codigoBarras, v.precioVenta, v.costoRef, "
+                 + "v.talle, v.color, v.sku, v.codigoBarras, v.precioVenta, v.costoCotizacion, "
                  + "v.stockMinimo, v.stockMaximo, v.activo, p.activo ");
 
         // Los filtros por stock van en HAVING porque dependen de la suma.
@@ -382,7 +382,7 @@ public class ProductoVarianteDAO {
         v.setSKU(rs.getString("sku"));
         v.setCodigoBarras(rs.getString("codigoBarras"));
         v.setPrecioVenta(rs.getDouble("precioVenta"));
-        v.setCostoRef(rs.getDouble("costoRef"));
+        v.setCostoCotizacion(rs.getDouble("costoCotizacion"));
         v.setStockMinimo(rs.getInt("stockMinimo"));
         v.setStockMaximo(rs.getInt("stockMaximo"));
         v.setActivo(rs.getInt("activo") == 1);

@@ -4,6 +4,11 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Insets;
 import java.util.function.IntPredicate;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -12,6 +17,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
@@ -19,6 +25,7 @@ import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 
 public final class ComponentesUI {
 
@@ -53,6 +60,64 @@ public final class ComponentesUI {
         boton.setContentAreaFilled(true);
         boton.setUI(new BasicButtonUI());
         return boton;
+    }
+
+    /** Aplica a las pestañas internas el mismo azul/coral que la barra superior. */
+    public static void estilizarPestanas(JTabbedPane pestanas) {
+        pestanas.setFont(Estilos.FUENTE);
+        pestanas.setOpaque(true);
+        pestanas.setBackground(Estilos.FONDO);
+        pestanas.setUI(new BasicTabbedPaneUI() {
+            {
+                tabInsets = new Insets(0, 16, 0, 16);
+                selectedTabPadInsets = new Insets(0, 0, 0, 0);
+                tabAreaInsets = new Insets(0, 0, 0, 0);
+                contentBorderInsets = new Insets(1, 1, 1, 1);
+            }
+
+            @Override
+            protected void paintTabArea(Graphics g, int placement, int selectedIndex) {
+                int height = calculateTabAreaHeight(placement, runCount, maxTabHeight);
+                g.setColor(Estilos.FONDO);
+                g.fillRect(0, 0, tabPane.getWidth(), height);
+                super.paintTabArea(g, placement, selectedIndex);
+                g.setColor(Estilos.AZUL_CLARO);
+                g.drawLine(0, 0, tabPane.getWidth(), 0);
+                for (int i = 0; i < tabPane.getTabCount() - 1; i++) {
+                    java.awt.Rectangle bounds = getTabBounds(i, new java.awt.Rectangle());
+                    int x = bounds.x + bounds.width;
+                    g.drawLine(x, 0, x, height - 1);
+                }
+            }
+
+            @Override
+            protected void paintTabBackground(Graphics g, int placement, int index,
+                    int x, int y, int width, int height, boolean selected) {
+                g.setColor(Estilos.FONDO);
+                g.fillRect(x, y, width, height);
+            }
+
+            @Override
+            protected void paintText(Graphics g, int placement, java.awt.Font font,
+                    FontMetrics metrics, int index, String title, java.awt.Rectangle textRect,
+                    boolean selected) {
+                g.setFont(Estilos.FUENTE);
+                g.setColor(selected ? Estilos.CORAL : Estilos.AZUL);
+                g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
+            }
+
+        });
+    }
+
+    public static JPanel filaBotonCentrada(JButton boton, int ancho, int alto) {
+        boton.setPreferredSize(new Dimension(ancho, alto));
+        boton.setMaximumSize(new Dimension(ancho, alto));
+        JPanel fila = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        fila.setOpaque(false);
+        fila.setPreferredSize(new Dimension(ancho, alto));
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
+        fila.add(boton);
+        return fila;
     }
 
     public static JTextField campo() {
@@ -214,6 +279,76 @@ public final class ComponentesUI {
         panel.add(scrollTabla(tabla), BorderLayout.CENTER);
 
         return panel;
+    }
+
+    /** Tarjeta de sección para agrupar una tabla u otro contenido del módulo. */
+    public static JPanel tarjeta(String titulo, Component interior) {
+        JPanel exterior = new JPanel(new BorderLayout(0, 10));
+        exterior.setBackground(Estilos.BEIGE);
+        exterior.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(4, 1, 1, 1, Estilos.AZUL),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+        if (titulo != null && !titulo.isBlank()) {
+            JLabel encabezado = new JLabel(titulo);
+            encabezado.setFont(Estilos.FUENTE_NEGRITA);
+            encabezado.setForeground(Estilos.AZUL);
+            encabezado.setBorder(BorderFactory.createEmptyBorder(0, 1, 5, 0));
+            exterior.add(encabezado, BorderLayout.NORTH);
+        }
+        exterior.add(interior, BorderLayout.CENTER);
+        return exterior;
+    }
+
+    /** Crea indicadores con etiquetas dinámicas; cada panel actualiza sus valores. */
+    public static JPanel resumenVisual(String[] etiquetas, JLabel[] cantidades) {
+        JPanel fila = new JPanel(new java.awt.GridLayout(1, etiquetas.length, 12, 0));
+        fila.setOpaque(false);
+        fila.setPreferredSize(new Dimension(1, 62));
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+        for (int i = 0; i < etiquetas.length; i++) {
+            JPanel caja = new JPanel();
+            caja.setBackground(Estilos.BEIGE);
+            caja.setLayout(new javax.swing.BoxLayout(caja, javax.swing.BoxLayout.Y_AXIS));
+            caja.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(4, 1, 1, 1, Estilos.AZUL),
+                    BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+            JLabel nombre = new JLabel(etiquetas[i]);
+            nombre.setFont(Estilos.FUENTE_PEQUENA);
+            nombre.setForeground(Estilos.TEXTO_SECUNDARIO);
+            JLabel numero = new JLabel("0");
+            numero.setFont(new Font("Tahoma", Font.BOLD, 18));
+            numero.setForeground(Estilos.TEXTO);
+            caja.add(nombre);
+            caja.add(javax.swing.Box.createVerticalStrut(2));
+            caja.add(numero);
+            cantidades[i] = numero;
+            fila.add(caja);
+        }
+        return fila;
+    }
+
+    /** Estilo de encabezado azul para tablas de módulos que usan modelos propios. */
+    public static void estilizarTablaExistente(JTable tabla) {
+        tabla.setFont(Estilos.FUENTE);
+        tabla.setForeground(Estilos.TEXTO);
+        tabla.setBackground(Estilos.BEIGE);
+        tabla.setSelectionForeground(Estilos.AZUL);
+        tabla.setSelectionBackground(Estilos.AZUL_CLARO);
+        tabla.setRowHeight(30);
+        tabla.setGridColor(Estilos.AZUL_CLARO);
+        tabla.setFillsViewportHeight(true);
+        tabla.getTableHeader().setFont(Estilos.FUENTE_NEGRITA);
+        tabla.getTableHeader().setBackground(Estilos.AZUL);
+        tabla.getTableHeader().setForeground(Estilos.BLANCO);
+        tabla.getTableHeader().setOpaque(true);
+        tabla.getTableHeader().setReorderingAllowed(false);
+        DefaultTableCellRenderer encabezado = new DefaultTableCellRenderer();
+        encabezado.setFont(Estilos.FUENTE_NEGRITA);
+        encabezado.setForeground(Estilos.BLANCO);
+        encabezado.setBackground(Estilos.AZUL);
+        encabezado.setOpaque(true);
+        encabezado.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+        tabla.getTableHeader().setDefaultRenderer(encabezado);
     }
 
     public static JPanel filaFormulario(String label, Component campo) {

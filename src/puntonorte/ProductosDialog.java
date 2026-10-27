@@ -6,6 +6,8 @@ import java.awt.GridLayout;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,13 +27,16 @@ import puntonorte.modelo.ProductoVariante;
 import puntonorte.modelo.Proveedor;
 import puntonorte.servicio.CompraService;
 import puntonorte.servicio.Productoservicio;
+import puntonorte.servicio.Permisos;
 import puntonorte.servicio.ReglaNegocioException;
+import puntonorte.dao.IvaDAO;
 
 /** Alta de producto (con una primera variante) y edición de la variante seleccionada. */
 public class ProductosDialog extends JDialog {
     private static final long serialVersionUID = 1L;
     private final Productoservicio servicio = new Productoservicio();
     private final CompraService compras = new CompraService();
+    private final double porcentajeIva = new IvaDAO().porcentajeGeneral();
     private final ProductoVariante variante;
     private final Runnable alGuardar;
 
@@ -89,9 +94,9 @@ public class ProductosDialog extends JDialog {
                     ComponentesUI.filaFormulario("", new JLabel("El producto quedará asociado a este proveedor."))));
         }
         formulario.add(fila(ComponentesUI.filaFormulario("SKU", sku),
-                ComponentesUI.filaFormulario("Precio de venta", precio)));
+                ComponentesUI.filaFormulario("Precio de venta (sugerido con IVA)", precio)));
         formulario.add(filaTriple(ComponentesUI.filaFormulario("Talle", talle),
-                ComponentesUI.filaFormulario("Color", color), ComponentesUI.filaFormulario("Costo ref.", costo)));
+                ComponentesUI.filaFormulario("Color", color), ComponentesUI.filaFormulario("Costo Cotización", costo)));
         formulario.add(fila(ComponentesUI.filaFormulario("Stock mínimo", minimo),
                 ComponentesUI.filaFormulario("Stock máximo (0 = sin máximo)", maximo)));
 
@@ -108,6 +113,17 @@ public class ProductosDialog extends JDialog {
         guardar.addActionListener(e -> guardar());
         nuevaCategoria.addActionListener(e -> nuevaCategoria());
         nuevaMarca.addActionListener(e -> nuevaMarca());
+        costo.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { sugerirPrecio(); }
+            @Override public void removeUpdate(DocumentEvent e) { sugerirPrecio(); }
+            @Override public void changedUpdate(DocumentEvent e) { sugerirPrecio(); }
+        });
+        if (variante != null) {
+            precio.setEditable(Permisos.puedeModificarPrecio());
+            costo.setEditable(Permisos.puedeVerCostos());
+            if (!Permisos.puedeVerCostos()) costo.setToolTipText("Solo Supervisor y Gerente pueden consultar costos.");
+            if (!Permisos.puedeModificarPrecio()) precio.setToolTipText("Solo Supervisor y Gerente pueden cambiar precios.");
+        }
         acciones.add(nuevaCategoria); acciones.add(nuevaMarca); acciones.add(cancelar); acciones.add(guardar);
         panel.add(formulario, BorderLayout.CENTER);
         panel.add(acciones, BorderLayout.SOUTH);
@@ -119,7 +135,7 @@ public class ProductosDialog extends JDialog {
         nombre.setText(variante.getNombreProducto());
         descripcion.setText(variante.getDescripcionProducto());
         sku.setText(variante.getSKU()); talle.setText(variante.getTalle()); color.setText(variante.getColor());
-        precio.setText(String.valueOf(variante.getPrecioVenta())); costo.setText(String.valueOf(variante.getCostoRef()));
+        precio.setText(String.valueOf(variante.getPrecioVenta())); costo.setText(String.valueOf(variante.getCostoCotizacion()));
         minimo.setText(String.valueOf(variante.getStockMinimo())); maximo.setText(String.valueOf(variante.getStockMaximo()));
         seleccionar(categoria, variante.getCategoria());
         seleccionar(marca, variante.getMarca());
@@ -134,7 +150,7 @@ public class ProductosDialog extends JDialog {
             if (variante != null) v.setIdVariante(variante.getIdVariante());
             v.setSKU(sku.getText()); v.setTalle(talle.getText()); v.setColor(color.getText());
             v.setPrecioVenta(numero(precio, "precio de venta"));
-            v.setCostoRef(numero(costo, "costo de referencia"));
+            v.setCostoCotizacion(numero(costo, "costo de cotización"));
             v.setStockMinimo(entero(minimo, "stock mínimo")); v.setStockMaximo(entero(maximo, "stock máximo"));
             if (variante == null) {
                 Proveedor seleccionado = (Proveedor) proveedor.getSelectedItem();
@@ -152,7 +168,7 @@ public class ProductosDialog extends JDialog {
                 boolean cambioVariante = !igual(sku.getText(), variante.getSKU())
                         || !igual(talle.getText(), variante.getTalle()) || !igual(color.getText(), variante.getColor())
                         || Double.compare(v.getPrecioVenta(), variante.getPrecioVenta()) != 0
-                        || Double.compare(v.getCostoRef(), variante.getCostoRef()) != 0
+                        || Double.compare(v.getCostoCotizacion(), variante.getCostoCotizacion()) != 0
                         || v.getStockMinimo() != variante.getStockMinimo() || v.getStockMaximo() != variante.getStockMaximo();
                 if (!cambioProducto && !cambioVariante) throw new ReglaNegocioException("No hay cambios para guardar.");
                 if (cambioProducto) servicio.editarProducto(variante.getIdProducto(), nombre.getText(), descripcion.getText(), cat.id, mar.id);
@@ -163,6 +179,15 @@ public class ProductosDialog extends JDialog {
         } catch (ReglaNegocioException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "No se pudo guardar", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    private void sugerirPrecio() {
+        if (costo.getText().isBlank()) return;
+        try {
+            double base = Double.parseDouble(costo.getText().trim().replace(',', '.'));
+            double sugerido = Math.round(base * (1 + porcentajeIva / 100.0) * 100.0) / 100.0;
+            precio.setText(String.format(java.util.Locale.ROOT, "%.2f", sugerido));
+        } catch (NumberFormatException ignored) { }
     }
 
     private void nuevaCategoria() {

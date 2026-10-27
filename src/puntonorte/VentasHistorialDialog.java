@@ -21,6 +21,7 @@ import puntonorte.modelo.Ventas;
 import puntonorte.servicio.ReglaNegocioException;
 import puntonorte.servicio.Ventaservicio;
 import puntonorte.servicio.Permisos;
+import puntonorte.servicio.SolicitudesOperativasService;
 
 /** Consulta ventas con el filtro de permisos aplicado por Ventaservicio. */
 public class VentasHistorialDialog extends JDialog {
@@ -67,13 +68,32 @@ public class VentasHistorialDialog extends JDialog {
         sur.setOpaque(false);
         JButton comprobante = ComponentesUI.boton("Ver comprobante", Estilos.CORAL, Estilos.AZUL);
         comprobante.addActionListener(e -> verComprobante());
+        JButton detalleVenta = ComponentesUI.boton("Detalle de venta", Estilos.CORAL, Estilos.AZUL);
+        detalleVenta.addActionListener(e -> verDetalleVenta());
+        JButton solicitarAnulacion = ComponentesUI.boton("Solicitar anulación", Estilos.CORAL, Estilos.AZUL);
+        solicitarAnulacion.setVisible("vendedor".equals(Permisos.normalizar(puntonorte.servicio.Sesion.getNombreRol())));
+        solicitarAnulacion.addActionListener(e -> solicitarAnulacion());
         JButton cerrar = ComponentesUI.botonBorde("Cerrar");
         cerrar.addActionListener(e -> dispose());
         sur.add(comprobante);
+        sur.add(detalleVenta);
+        if (solicitarAnulacion.isVisible()) sur.add(solicitarAnulacion);
         sur.add(cerrar);
         base.add(sur, BorderLayout.SOUTH);
         setContentPane(base);
         recargar();
+    }
+
+    private void solicitarAnulacion() {
+        int fila=tabla.getSelectedRow();
+        if(fila<0||fila>=resultados.size()){JOptionPane.showMessageDialog(this,"Seleccioná una venta.","Anulación",JOptionPane.WARNING_MESSAGE);return;}
+        Ventas venta=resultados.get(tabla.convertRowIndexToModel(fila));
+        String estado=String.valueOf(venta.getEstado());
+        if(!"Pagada".equalsIgnoreCase(estado)&&!"Entregada".equalsIgnoreCase(estado)&&!"PAGADA".equalsIgnoreCase(estado)&&!"ENTREGADA".equalsIgnoreCase(estado)){JOptionPane.showMessageDialog(this,"Solo se puede solicitar la anulación de ventas pagadas o entregadas.","Anulación",JOptionPane.WARNING_MESSAGE);return;}
+        String motivo=JOptionPane.showInputDialog(this,"Motivo para solicitar la anulación de la venta #"+venta.getIdVenta()+":","Solicitar anulación",JOptionPane.QUESTION_MESSAGE);
+        if(motivo==null)return;
+        try{new SolicitudesOperativasService().solicitarAnulacion(venta.getIdVenta(),motivo);JOptionPane.showMessageDialog(this,"La solicitud quedó pendiente de revisión por Supervisor o Gerente.","Anulación solicitada",JOptionPane.INFORMATION_MESSAGE);}
+        catch(ReglaNegocioException ex){JOptionPane.showMessageDialog(this,ex.getMessage(),"Anulación",JOptionPane.WARNING_MESSAGE);}
     }
 
     private void verComprobante() {
@@ -83,6 +103,15 @@ public class VentasHistorialDialog extends JDialog {
             return;
         }
         FacturaTicketDialog.mostrar(this, resultados.get(tabla.convertRowIndexToModel(fila)).getIdVenta());
+    }
+
+    private void verDetalleVenta() {
+        int fila = tabla.getSelectedRow();
+        if (fila < 0 || fila >= resultados.size()) {
+            JOptionPane.showMessageDialog(this, "Seleccioná una venta de la lista.", "Detalle de venta", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        DetalleVentaDialog.mostrar(this, resultados.get(tabla.convertRowIndexToModel(fila)).getIdVenta());
     }
 
     /**

@@ -8,6 +8,7 @@ public class Emisor {
     private String cuit;
     private String condicionIva;
     private String domicilioComercial;
+    private String localidad;
     private String ingresosBrutos;
     private LocalDate inicioActividades;
     private int puntoVenta;
@@ -25,6 +26,9 @@ public class Emisor {
 
     public String getDomicilioComercial() { return domicilioComercial; }
     public void setDomicilioComercial(String domicilioComercial) { this.domicilioComercial = domicilioComercial; }
+
+    public String getLocalidad() { return localidad; }
+    public void setLocalidad(String localidad) { this.localidad = localidad; }
 
     public String getIngresosBrutos() { return ingresosBrutos; }
     public void setIngresosBrutos(String ingresosBrutos) { this.ingresosBrutos = ingresosBrutos; }

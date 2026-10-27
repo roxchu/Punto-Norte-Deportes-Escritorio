@@ -65,7 +65,7 @@ public class Stockservicio {
 
     public int crearUbicacion(String nombre) {
         exigirSesion();
-        if (!Permisos.puedeGestionarCatalogo()) {
+        if (!Permisos.esSupervisorOGerente(Sesion.getNombreRol())) {
             throw new ReglaNegocioException("No tenés permiso para crear ubicaciones.");
         }
         nombre = limpio(nombre);

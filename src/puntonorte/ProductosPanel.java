@@ -49,9 +49,11 @@ public class ProductosPanel extends JPanel {
         this.actualizarFiltrosCategorias = actualizarFiltrosCategorias == null ? () -> {} : actualizarFiltrosCategorias;
         setLayout(new BorderLayout()); setBackground(Estilos.FONDO);
         setBorder(BorderFactory.createEmptyBorder(26, 26, 26, 26));
-        JPanel contenido = new JPanel(); contenido.setOpaque(false); contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
-        contenido.add(crearEncabezado()); contenido.add(Box.createVerticalStrut(18));
-        tablaPanel.setBackground(Estilos.BEIGE); contenido.add(tablaPanel);
+        JPanel contenido = new JPanel(new BorderLayout(0, 14));
+        contenido.setOpaque(false);
+        contenido.add(crearEncabezado(), BorderLayout.NORTH);
+        tablaPanel.setBackground(Estilos.BEIGE);
+        contenido.add(ComponentesUI.tarjeta("Catálogo de productos", tablaPanel), BorderLayout.CENTER);
         add(contenido, BorderLayout.CENTER);
         recargar();
     }
@@ -62,12 +64,17 @@ public class ProductosPanel extends JPanel {
         textos.add(ComponentesUI.titulo("Listado de Productos")); textos.add(Box.createVerticalStrut(5));
         textos.add(ComponentesUI.subtitulo("Productos, variantes, precios y stock."));
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); botones.setOpaque(false);
-        if (Permisos.puedeGestionarCatalogo()) {
+        if (Permisos.puedeCrearProducto()) {
             JButton agregar = boton("＋ Agregar producto", () -> new ProductosDialog(owner, null, this::recargar).setVisible(true));
+            botones.add(agregar);
+        }
+        if (Permisos.puedeGestionarCatalogo()) {
             JButton editar = boton("✎ Editar", () -> editar(seleccion()));
             JButton estado = boton("Habilitar / inhabilitar", () -> cambiarEstado(seleccion()));
-            JButton ubicacion = boton("＋ Ubicación", this::crearUbicacion);
-            botones.add(agregar); botones.add(editar); botones.add(estado); botones.add(ubicacion);
+            botones.add(editar); botones.add(estado);
+        }
+        if (Permisos.puedeModificarPrecio()) {
+            botones.add(boton("＋ Ubicación", this::crearUbicacion));
         }
         if (Permisos.puedeAjustarStock()) {
             botones.add(boton("Ajustar stock", () -> ajustar(seleccion())));

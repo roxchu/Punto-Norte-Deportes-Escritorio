@@ -13,18 +13,35 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 
-import puntonorte.servicio.AuditoriaService;
+import puntonorte.servicio.InicioService;
 import puntonorte.servicio.Sesion;
+import puntonorte.servicio.SolicitudesOperativasService;
 
 public class InicioPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
+    private InicioService.Datos datos;
 
     public InicioPanel() {
+        recargar();
+    }
 
+    public final void recargar() {
+        InicioService.Datos cargados;
+        try {
+            cargados = new InicioService().cargar();
+        } catch (RuntimeException ex) {
+            cargados = new InicioService.Datos();
+            cargados.disponible = false;
+        }
+        datos = cargados;
+
+        removeAll();
         setLayout(new BorderLayout());
         setBackground(Estilos.FONDO);
         setBorder(BorderFactory.createEmptyBorder(26, 26, 26, 26));
@@ -41,9 +58,10 @@ public class InicioPanel extends JPanel {
         contenido.add(crearEncabezado(), fila);
         fila.gridy = 1;
         contenido.add(crearResumen(), fila);
-        fila.gridy = 2;
+        int siguienteFila = 2;
+        fila.gridy = siguienteFila++;
         contenido.add(crearDashboard(), fila);
-        fila.gridy = 3;
+        fila.gridy = siguienteFila;
         fila.weighty = 1;
         fila.fill = GridBagConstraints.BOTH;
         fila.insets = new Insets(4, 0, 0, 0);
@@ -52,6 +70,9 @@ public class InicioPanel extends JPanel {
         // El contenido ocupa todo el espacio central y cada fila se expande hasta
         // los márgenes del panel para mantener alineados resumen y tablas.
         add(contenido, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+        NotificacionesUI.actualizarTarjetasInicio();
     }
 
     private JPanel crearEncabezado() {
@@ -82,15 +103,55 @@ public class InicioPanel extends JPanel {
         JPanel panel = new JPanel(new GridLayout(1, 5, 0, 0));
         panel.setBackground(Estilos.BEIGE);
         panel.setBorder(BorderFactory.createMatteBorder(4, 0, 0, 0, Estilos.AZUL));
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
+        boolean mostrarAccionStock = datos.disponible && datos.stockBajo > 0 && esEmpleadoDePiso();
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, mostrarAccionStock ? 105 : 78));
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
-        panel.add(resumen("Productos registrados", "15"));
-        panel.add(resumen("Productos con stock bajo", "3"));
-        panel.add(resumen("Ventas registradas hoy", "8"));
-        panel.add(resumen("Pedidos en curso", "2"));
-        panel.add(resumen("Solicitudes pendientes", "1"));
+        panel.add(resumen("Productos registrados", valor(datos.productos)));
+        panel.add(resumenStockBajo(mostrarAccionStock));
+        panel.add(resumen("Ventas registradas hoy", valor(datos.ventasHoy)));
+        panel.add(resumen("Pedidos en curso", valor(datos.pedidosAbiertos)));
+        panel.add(resumen("Usuarios pendientes", valor(datos.solicitudesUsuarios)));
 
+        return panel;
+    }
+
+    private boolean esEmpleadoDePiso() {
+        String rol = Sesion.getNombreRol().toLowerCase(java.util.Locale.ROOT);
+        return rol.contains("vendedor") || rol.contains("depósito") || rol.contains("deposito");
+    }
+
+    private JPanel resumenStockBajo(boolean mostrarAccion) {
+        JPanel panel = resumen("Productos con stock bajo", valor(datos.stockBajo));
+        if (!mostrarAccion) return panel;
+        SolicitudesOperativasService solicitudes = new SolicitudesOperativasService();
+        boolean yaAvisado;
+        try {
+            yaAvisado = solicitudes.hayAvisoStockActivo();
+        } catch (RuntimeException ex) {
+            yaAvisado = false;
+        }
+        if (yaAvisado) {
+            JLabel estado = new JLabel("Encargado avisado");
+            estado.setFont(new java.awt.Font("Tahoma", java.awt.Font.PLAIN, 10));
+            estado.setForeground(Estilos.TEXTO_SECUNDARIO);
+            panel.add(estado);
+        } else {
+            JButton avisar = ComponentesUI.boton("Avisar a encargado", Estilos.CORAL, Estilos.AZUL);
+            avisar.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 10));
+            avisar.addActionListener(e -> {
+                try {
+                    solicitudes.enviarAvisoStockBajo();
+                    JOptionPane.showMessageDialog(this, "El aviso se envió al Encargado.",
+                            "Aviso enviado", JOptionPane.INFORMATION_MESSAGE);
+                    recargar();
+                } catch (RuntimeException ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso de stock",
+                            JOptionPane.WARNING_MESSAGE);
+                }
+            });
+            panel.add(avisar);
+        }
         return panel;
     }
 
@@ -124,41 +185,20 @@ public class InicioPanel extends JPanel {
         return panel;
     }
 
+    private String valor(int numero) {
+        return datos.disponible ? String.valueOf(numero) : "—";
+    }
+
     private JPanel crearDashboard() {
 
         JPanel panel = new JPanel(new GridLayout(1, 2, 16, 0));
         panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        panel.setPreferredSize(new Dimension(900, 170));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
-        panel.add(crearGrafico());
         panel.add(crearPedidos());
-
-        return panel;
-    }
-
-    private JPanel crearGrafico() {
-
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Estilos.BEIGE);
-        panel.setBorder(BorderFactory.createMatteBorder(4, 0, 0, 0, Estilos.AZUL));
-
-        JPanel titulo = new JPanel(new BorderLayout());
-        titulo.setOpaque(false);
-        titulo.setBorder(BorderFactory.createEmptyBorder(10, 12, 8, 12));
-
-        JLabel nombre = new JLabel("Stock por categoría");
-        nombre.setFont(Estilos.FUENTE_NEGRITA);
-
-        JLabel detalle = new JLabel("Unidades disponibles");
-        detalle.setFont(new java.awt.Font("Tahoma", java.awt.Font.PLAIN, 10));
-        detalle.setForeground(Estilos.TEXTO_SECUNDARIO);
-
-        titulo.add(nombre, BorderLayout.WEST);
-        titulo.add(detalle, BorderLayout.EAST);
-
-        panel.add(titulo, BorderLayout.NORTH);
-       // panel.add(new StockChartPanel(), BorderLayout.CENTER);
+        panel.add(PeticionesUI.crearTarjetaInicio());
 
         return panel;
     }
@@ -179,12 +219,13 @@ public class InicioPanel extends JPanel {
                 "Estado"
         };
 
-        Object[][] datos = {
-                {"PC00001", "Textiles Urbanos", "En camino"},
-                {"PC00002", "Calzado Metropolitano", "Preparando"}
-        };
+        Object[][] filas = new Object[datos.pedidos.size()][columnas.length];
+        for (int i = 0; i < datos.pedidos.size(); i++) {
+            InicioService.Pedido pedido = datos.pedidos.get(i);
+            filas[i] = new Object[] {"PC" + String.format("%05d", pedido.id), pedido.proveedor, pedido.estado};
+        }
 
-        JTable tabla = ComponentesUI.tabla(columnas, datos);
+        JTable tabla = ComponentesUI.tabla(columnas, filas);
 
         panel.add(titulo, BorderLayout.NORTH);
         panel.add(ComponentesUI.scrollTabla(tabla), BorderLayout.CENTER);
@@ -210,21 +251,16 @@ public class InicioPanel extends JPanel {
                 "Detalle"
         };
 
-        List<AuditoriaService.Fila> actividad;
-        try {
-            actividad = new AuditoriaService().ultimasDeSesion(8);
-        } catch (RuntimeException ex) {
-            actividad = java.util.Collections.emptyList();
-        }
-        Object[][] datos = new Object[actividad.size()][columnas.length];
+        List<InicioService.Operacion> actividad = datos.operaciones;
+        Object[][] filas = new Object[actividad.size()][columnas.length];
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         for (int i = 0; i < actividad.size(); i++) {
-            AuditoriaService.Fila fila = actividad.get(i);
-            datos[i] = new Object[] {fila.fecha.format(formato), fila.usuario, fila.rol,
-                    fila.operacion, fila.modulo, fila.detalle};
+            InicioService.Operacion operacion = actividad.get(i);
+            filas[i] = new Object[] {operacion.fecha.format(formato), operacion.usuario, operacion.rol,
+                    operacion.operacion, operacion.modulo, operacion.detalle};
         }
 
-        JTable tabla = ComponentesUI.tabla(columnas, datos);
+        JTable tabla = ComponentesUI.tabla(columnas, filas);
 
         panel.add(titulo, BorderLayout.NORTH);
         panel.add(ComponentesUI.scrollTabla(tabla), BorderLayout.CENTER);

@@ -220,13 +220,9 @@ public class LoginFrame extends JFrame {
 
         JButton ingresar = ComponentesUI.boton("→ Ingresar al sistema", Estilos.CORAL, Estilos.AZUL);
         botonIngresar = ingresar;
-        ingresar.setAlignmentX(LEFT_ALIGNMENT);
-        ingresar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
 
         JButton registro = ComponentesUI.boton("Solicitar una cuenta", Estilos.BLANCO, Estilos.AZUL);
         registro.setBorder(BorderFactory.createLineBorder(Estilos.AZUL_CLARO));
-        registro.setAlignmentX(LEFT_ALIGNMENT);
-        registro.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
         ingresar.addActionListener(e -> iniciarSesion());
 
@@ -246,9 +242,9 @@ public class LoginFrame extends JFrame {
         form.add(Box.createVerticalStrut(12));
         form.add(codigo);
         form.add(Box.createVerticalStrut(18));
-        form.add(ingresar);
+        form.add(ComponentesUI.filaBotonCentrada(ingresar, 300, 38));
         form.add(Box.createVerticalStrut(10));
-        form.add(registro);
+        form.add(ComponentesUI.filaBotonCentrada(registro, 300, 36));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 35, 20, 35);

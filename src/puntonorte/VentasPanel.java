@@ -32,10 +32,10 @@ public class VentasPanel extends JPanel {
     private final Ventaservicio servicio = new Ventaservicio();
     private final PedidoVenta pedido = new PedidoVenta();
     private final Productoservicio catalogoService = new Productoservicio();
-    private final JTable tabla;
+    private JTable tabla;
     private final JTextField busqueda = ComponentesUI.campo();
     private ArrayList<ProductoVariante> catalogo = new ArrayList<>();
-    private final JButton verPedido;
+    private JButton verPedido;
     private String filtroCategoria = "", filtroSubcategoria = "", filtroTalle = "", filtroColor = "";
     private boolean soloDisponibles = true;
 
@@ -44,6 +44,21 @@ public class VentasPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(Estilos.FONDO);
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        if (!Permisos.puedeVender()) {
+            JPanel consulta = new JPanel(new BorderLayout(0, 14));
+            consulta.setOpaque(false);
+            consulta.add(ComponentesUI.titulo("Consulta de ventas"), BorderLayout.NORTH);
+            consulta.add(ComponentesUI.subtitulo("Este perfil puede consultar las ventas registradas, pero no cobrar."), BorderLayout.CENTER);
+            JButton historial = ComponentesUI.boton("Ventas realizadas", Estilos.CORAL, Estilos.AZUL);
+            historial.addActionListener(e -> new VentasHistorialDialog(owner, servicio).setVisible(true));
+            JPanel accion = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            accion.setOpaque(false);
+            accion.add(historial);
+            consulta.add(accion, BorderLayout.SOUTH);
+            add(consulta, BorderLayout.NORTH);
+            return;
+        }
 
         JPanel contenido = new JPanel();
         contenido.setOpaque(false);
@@ -88,13 +103,17 @@ public class VentasPanel extends JPanel {
         tabla.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { if (e.getClickCount() == 2) agregarSeleccionado(); }
         });
-        contenido.add(buscarPanel);
-        contenido.add(ComponentesUI.bloqueTabla("Productos disponibles en salón", tabla));
+        JPanel catalogoVisual = new JPanel(new BorderLayout(0, 10));
+        catalogoVisual.setOpaque(false);
+        catalogoVisual.add(buscarPanel, BorderLayout.NORTH);
+        catalogoVisual.add(ComponentesUI.scrollTabla(tabla), BorderLayout.CENTER);
+        contenido.add(ComponentesUI.tarjeta("Productos disponibles en salón", catalogoVisual));
         add(contenido, BorderLayout.CENTER);
         recargar();
     }
 
-    private void recargar() {
+    public void recargar() {
+        if (!Permisos.puedeVender()) return;
         try {
             catalogo = servicio.listarCatalogo(busqueda.getText());
             aplicarFiltrosCatalogo();

@@ -35,7 +35,7 @@ public class TopBarPanel extends JPanel {
         if (Permisos.puedeVerModulo("INICIO")) agregarBoton(navegacion, "INICIO", "⌂ Inicio", onNavigate);
         if (Permisos.puedeVerModulo("PRODUCTOS")) agregarBoton(navegacion, "PRODUCTOS", "▦ Productos", onNavigate);
         if (Permisos.puedeVerModulo("PROVEEDORES")) agregarBoton(navegacion, "PROVEEDORES", "⇄ Proveedores", onNavigate);
-        if (Permisos.puedeVerModulo("VENTAS") && Permisos.puedeVender()) agregarBoton(navegacion, "VENTAS", "▤ Ventas", onNavigate);
+        if (Permisos.puedeVerModulo("VENTAS")) agregarBoton(navegacion, "VENTAS", "▤ Ventas", onNavigate);
         if (Permisos.puedeGestionarDescuentos() && Permisos.puedeVerModulo("DESCUENTOS")) {
             agregarBoton(navegacion, "DESCUENTOS", "％ Descuentos", onNavigate);
         }
@@ -47,8 +47,23 @@ public class TopBarPanel extends JPanel {
         moduloActual.setFont(new java.awt.Font("Tahoma", java.awt.Font.PLAIN, 11));
         moduloActual.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 18));
 
-        add(navegacion, BorderLayout.CENTER);
-        add(moduloActual, BorderLayout.EAST);
+        JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
+        derecha.setOpaque(false);
+        derecha.add(NotificacionesUI.crearBoton(this));
+        derecha.add(moduloActual);
+
+        javax.swing.JScrollPane barraDesplazable = new javax.swing.JScrollPane(navegacion);
+        barraDesplazable.setBorder(BorderFactory.createEmptyBorder());
+        barraDesplazable.setOpaque(false);
+        barraDesplazable.getViewport().setOpaque(false);
+        barraDesplazable.setHorizontalScrollBarPolicy(
+                javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        barraDesplazable.setVerticalScrollBarPolicy(
+                javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        barraDesplazable.getHorizontalScrollBar().setPreferredSize(new java.awt.Dimension(0, 2));
+
+        add(barraDesplazable, BorderLayout.CENTER);
+        add(derecha, BorderLayout.EAST);
     }
 
     private void agregarBoton(

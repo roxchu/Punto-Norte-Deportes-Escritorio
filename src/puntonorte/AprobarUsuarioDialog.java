@@ -9,7 +9,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -45,9 +44,10 @@ public class AprobarUsuarioDialog extends JDialog {
         usuario.setForeground(Estilos.TEXTO_SECUNDARIO);
         usuario.setAlignmentX(LEFT_ALIGNMENT);
 
-        JComboBox<String> rol = ComponentesUI.combo(rolesAsignables.toArray(new String[0]));
-        rol.setSelectedItem(usuarioService.nombreRol(usuarioSeleccionado.getIdRol()));
-        JPanel rolPanel = ComponentesUI.filaFormulario("Rol asignado", rol);
+        String rolSolicitado = usuarioService.nombreRol(usuarioSeleccionado.getIdRol());
+        JLabel rolElegido = new JLabel(rolSolicitado);
+        rolElegido.setFont(Estilos.FUENTE);
+        JPanel rolPanel = ComponentesUI.filaFormulario("Rol asignado", rolElegido);
         rolPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
         JLabel aviso = new JLabel("<html>Al aceptar se enviará un código al correo indicado. "
                 + "Si el envío falla, la solicitud quedará pendiente.</html>");
@@ -63,7 +63,7 @@ public class AprobarUsuarioDialog extends JDialog {
         cancelar.setBorder(BorderFactory.createLineBorder(Estilos.AZUL_CLARO));
         JButton aceptar = ComponentesUI.boton("✓ Aceptar solicitud", Estilos.CORAL, Estilos.AZUL);
         cancelar.addActionListener(e -> dispose());
-        aceptar.addActionListener(e -> aprobar(usuarioSeleccionado, (String) rol.getSelectedItem(),
+        aceptar.addActionListener(e -> aprobar(usuarioSeleccionado, rolElegido.getText(),
                 aceptar, cancelar, alFinalizar));
         acciones.add(cancelar);
         acciones.add(aceptar);

@@ -148,9 +148,10 @@ public class ProductoDAO {
                 }
 
                 try (PreparedStatement relacion = con.prepareStatement(
-                        "INSERT INTO producto_proveedor (idProducto, idProveedor) VALUES (?, ?)")) {
+                        "INSERT INTO producto_proveedor (idProducto, idProveedor, costoUnitario) VALUES (?, ?, ?)")) {
                     relacion.setInt(1, idProducto);
                     relacion.setInt(2, idProveedor);
+                    relacion.setDouble(3, variantes.get(0).getCostoCotizacion());
                     relacion.executeUpdate();
                 }
 

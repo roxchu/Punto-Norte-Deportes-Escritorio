@@ -13,22 +13,16 @@ public class StockChartPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private final String[] categorias = {
-            "Ropa",
-            "Calzado",
-            "Accesorios",
-            "Equipo"
-    };
-
-    private final int[] valores = {
-            75,
-            19,
-            81,
-            28
-    };
+    private final String[] categorias;
+    private final int[] valores;
 
     public StockChartPanel() {
+        this(new String[0], new int[0]);
+    }
 
+    public StockChartPanel(String[] categorias, int[] valores) {
+        this.categorias = categorias == null ? new String[0] : categorias.clone();
+        this.valores = valores == null ? new int[0] : valores.clone();
         setBackground(Estilos.BEIGE);
         setPreferredSize(new Dimension(520, 260));
     }
@@ -55,7 +49,8 @@ public class StockChartPanel extends JPanel {
         int anchoGrafico = ancho - izquierda - derecha;
         int altoGrafico = alto - arriba - abajo;
 
-        int maximo = 100;
+        int maximo = 1;
+        for (int valor : valores) maximo = Math.max(maximo, valor);
 
         g2.setFont(new Font("Tahoma", Font.PLAIN, 10));
 
@@ -71,6 +66,12 @@ public class StockChartPanel extends JPanel {
             g2.drawString(String.valueOf(valor), 15, y + 4);
         }
 
+        if (categorias.length == 0) {
+            g2.setColor(Estilos.TEXTO_SECUNDARIO);
+            g2.drawString("No hay datos de stock para mostrar.", izquierda, arriba + 24);
+            g2.dispose();
+            return;
+        }
         int paso = anchoGrafico / categorias.length;
         int anchoBarra = Math.min(65, paso / 2);
 

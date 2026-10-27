@@ -13,10 +13,15 @@ import java.util.function.Supplier;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JLabel;
+import javax.swing.JButton;
+import javax.swing.Timer;
+import javax.swing.SwingWorker;
 
 import puntonorte.servicio.UsuarioService;
 import puntonorte.servicio.Permisos;
 import puntonorte.servicio.Productoservicio;
+import puntonorte.servicio.InicioService;
 import puntonorte.modelo.Categoria;
 
 /**
@@ -41,6 +46,11 @@ public class MainFrame extends JFrame {
     private VentasPanel ventasPanel;
     private UsuariosPanel usuariosPanel;
     private ProveedoresPanel proveedoresPanel;
+    private String moduloActual = "INICIO";
+    private InicioPanel inicioPanel;
+    private boolean cargandoAvisoStock;
+    private final JPanel avisoStockGlobal = new JPanel(new BorderLayout(10, 0));
+    private final JLabel textoAvisoStockGlobal = new JLabel();
 
     public MainFrame() {
 
@@ -58,6 +68,7 @@ public class MainFrame extends JFrame {
                 () -> mostrarModulo("CUENTA"),
                 this::salir
         );
+        sidebar.setRefrescarPanel(this::refrescarModuloActual);
         sidebar.setAplicarFiltrosProductos(filtros -> {
             if (productosPanel != null) productosPanel.aplicarFiltros(filtros);
         });
@@ -73,8 +84,23 @@ public class MainFrame extends JFrame {
 
         topBar = new TopBarPanel(this::mostrarModulo);
 
+        avisoStockGlobal.setBackground(new java.awt.Color(0xFF, 0xF0, 0xE8));
+        avisoStockGlobal.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, Estilos.CORAL),
+                javax.swing.BorderFactory.createEmptyBorder(7, 18, 7, 14)));
+        textoAvisoStockGlobal.setForeground(Estilos.AZUL);
+        textoAvisoStockGlobal.setFont(Estilos.FUENTE_NEGRITA);
+        JButton revisarStock = ComponentesUI.botonBorde("Revisar productos");
+        revisarStock.addActionListener(e -> mostrarModulo("PRODUCTOS"));
+        avisoStockGlobal.add(textoAvisoStockGlobal, BorderLayout.CENTER);
+        avisoStockGlobal.add(revisarStock, BorderLayout.EAST);
+        avisoStockGlobal.setVisible(false);
+
         // Cómo se arma cada módulo (se ejecuta recién cuando se abre).
-        fabricas.put("INICIO", () -> new InicioPanel());
+        fabricas.put("INICIO", () -> {
+            inicioPanel = new InicioPanel();
+            return inicioPanel;
+        });
         fabricas.put("PRODUCTOS", () -> {
             productosPanel = new ProductosPanel(this, () -> sidebar.setOpcionesCategorias(new Productoservicio().listarCategorias()));
             return productosPanel;
@@ -105,7 +131,11 @@ public class MainFrame extends JFrame {
         fabricas.put("CUENTA", () -> new CuentaPanel());
 
         JPanel centro = new JPanel(new BorderLayout());
-        centro.add(topBar, BorderLayout.NORTH);
+        JPanel cabecera = new JPanel();
+        cabecera.setLayout(new javax.swing.BoxLayout(cabecera, javax.swing.BoxLayout.Y_AXIS));
+        cabecera.add(topBar);
+        cabecera.add(avisoStockGlobal);
+        centro.add(cabecera, BorderLayout.NORTH);
         centro.add(contenido, BorderLayout.CENTER);
 
         setLayout(new BorderLayout());
@@ -113,6 +143,8 @@ public class MainFrame extends JFrame {
         add(centro, BorderLayout.CENTER);
 
         mostrarModulo("INICIO");
+        Timer refrescoAvisoStock = new Timer(60000, e -> refrescarAvisoStock());
+        refrescoAvisoStock.start();
     }
 
     public void mostrarModulo(String modulo) {
@@ -135,14 +167,71 @@ public class MainFrame extends JFrame {
 
         // Al volver a un módulo ya creado se refrescan sus datos (igual que antes).
         if (!recienCreado) {
+            if ("INICIO".equals(modulo) && inicioPanel != null) inicioPanel.recargar();
             if ("HISTORIAL".equals(modulo) && historialPanel != null) historialPanel.recargar();
             if ("DESCUENTOS".equals(modulo) && descuentosPanel != null) descuentosPanel.recargar();
             if ("PROVEEDORES".equals(modulo) && proveedoresPanel != null) proveedoresPanel.recargar();
         }
 
         cardLayout.show(contenido, modulo);
+        moduloActual = modulo;
         topBar.marcarActivo(modulo);
         sidebar.mostrarSeccion(modulo);
+        refrescarAvisoStock();
+    }
+
+    private void refrescarAvisoStock() {
+        if (cargandoAvisoStock) return;
+        cargandoAvisoStock = true;
+        new SwingWorker<InicioService.Datos, Void>() {
+            @Override protected InicioService.Datos doInBackground() { return new InicioService().cargar(); }
+            @Override protected void done() {
+                try {
+                    InicioService.Datos datos = get();
+                    boolean visible = datos.disponible && datos.stockBajo > 0;
+                    textoAvisoStockGlobal.setText("Atención: hay " + datos.stockBajo + " variante(s) con stock bajo en el sistema.");
+                    avisoStockGlobal.setVisible(visible);
+                    if (!visible) {
+                        try { new puntonorte.servicio.SolicitudesOperativasService().hayAvisoStockActivo(); }
+                        catch (RuntimeException ignored) { }
+                    }
+                } catch (Exception ex) {
+                    avisoStockGlobal.setVisible(false);
+                } finally {
+                    cargandoAvisoStock = false;
+                    avisoStockGlobal.revalidate();
+                    avisoStockGlobal.repaint();
+                }
+            }
+        }.execute();
+    }
+
+    private void refrescarModuloActual() {
+        switch (moduloActual) {
+            case "INICIO":
+                if (inicioPanel != null) inicioPanel.recargar();
+                break;
+            case "PRODUCTOS":
+                if (productosPanel != null) productosPanel.recargar();
+                break;
+            case "VENTAS":
+                if (ventasPanel != null) ventasPanel.recargar();
+                break;
+            case "PROVEEDORES":
+                if (proveedoresPanel != null) proveedoresPanel.recargar();
+                break;
+            case "HISTORIAL":
+                if (historialPanel != null) historialPanel.recargar();
+                break;
+            case "DESCUENTOS":
+                if (descuentosPanel != null) descuentosPanel.recargar();
+                break;
+            case "USUARIOS":
+                if (usuariosPanel != null) usuariosPanel.recargar();
+                break;
+            default:
+                break;
+        }
     }
 
     private void salir() {

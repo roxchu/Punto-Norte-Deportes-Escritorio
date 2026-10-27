@@ -39,7 +39,10 @@ public class HistorialPanel extends JPanel {
         contenido.add(Box.createVerticalStrut(18));
         tablaPanel.setBackground(Estilos.BEIGE);
         tablaPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        contenido.add(tablaPanel);
+        JPanel seccion = ComponentesUI.tarjeta("Registro de movimientos", tablaPanel);
+        seccion.setAlignmentX(LEFT_ALIGNMENT);
+        seccion.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        contenido.add(seccion);
         add(contenido, BorderLayout.CENTER);
         recargar();
     }
