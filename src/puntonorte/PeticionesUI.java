@@ -34,6 +34,13 @@ public final class PeticionesUI {
     }
 
     public static JPanel crearTarjetaInicio() {
+        return crearTarjetaInicio(0, false);
+    }
+
+    public static JPanel crearTarjetaInicio(int stockBajo, boolean datosStockDisponibles) {
+        if (!Permisos.puedeResolverSolicitudesOperativas(Sesion.getNombreRol())) {
+            return crearTarjetaAvisoStock(stockBajo, datosStockDisponibles);
+        }
         JPanel contenido=new JPanel(new BorderLayout(12,6));contenido.setBackground(Estilos.BEIGE);contenido.setBorder(BorderFactory.createEmptyBorder(10,12,9,12));
         contador=new JLabel(textoContador());contador.setFont(new java.awt.Font("Tahoma",java.awt.Font.BOLD,26));contador.setForeground(Estilos.AZUL);
         JLabel descripcion=new JLabel("solicitudes por resolver");descripcion.setForeground(Estilos.TEXTO_SECUNDARIO);descripcion.setFont(Estilos.FUENTE_PEQUENA);
@@ -41,6 +48,61 @@ public final class PeticionesUI {
         JButton ver=ComponentesUI.boton("Ver peticiones",Estilos.CORAL,Estilos.AZUL);ver.addActionListener(e->{abrir(contenido);actualizarContador();NotificacionesUI.actualizarContadorAvisos();});
         contenido.add(numero,BorderLayout.CENTER);contenido.add(ver,BorderLayout.EAST);
         return ComponentesUI.tarjeta("Peticiones",contenido);
+    }
+
+    private static JPanel crearTarjetaAvisoStock(int stockBajo, boolean datosDisponibles) {
+        JPanel contenido = new JPanel(new BorderLayout(12, 6));
+        contenido.setBackground(Estilos.BEIGE);
+        contenido.setBorder(BorderFactory.createEmptyBorder(10, 12, 9, 12));
+        int cantidad = datosDisponibles ? stockBajo : -1;
+        JLabel contadorStock = new JLabel(cantidad < 0 ? "—" : String.valueOf(cantidad));
+        contadorStock.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 26));
+        contadorStock.setForeground(Estilos.AZUL);
+        JLabel descripcion = new JLabel("variantes con stock bajo");
+        descripcion.setForeground(Estilos.TEXTO_SECUNDARIO);
+        descripcion.setFont(Estilos.FUENTE_PEQUENA);
+        JPanel numero = new JPanel();
+        numero.setOpaque(false);
+        numero.setLayout(new BoxLayout(numero, BoxLayout.Y_AXIS));
+        numero.add(contadorStock);
+        numero.add(descripcion);
+        contenido.add(numero, BorderLayout.CENTER);
+
+        if (cantidad > 0) {
+            SolicitudesOperativasService solicitudes = new SolicitudesOperativasService();
+            boolean yaAvisado;
+            try {
+                yaAvisado = solicitudes.hayAvisoStockActivo();
+            } catch (RuntimeException ex) {
+                yaAvisado = false;
+            }
+            if (yaAvisado) {
+                JLabel estado = new JLabel("Encargado avisado");
+                estado.setForeground(Estilos.TEXTO_SECUNDARIO);
+                contenido.add(estado, BorderLayout.EAST);
+            } else {
+                JButton avisar = ComponentesUI.boton("Avisar a encargado", Estilos.CORAL, Estilos.AZUL);
+                avisar.addActionListener(e -> {
+                    try {
+                        solicitudes.enviarAvisoStockBajo();
+                        JOptionPane.showMessageDialog(contenido, "El aviso se envió al Encargado.",
+                                "Aviso enviado", JOptionPane.INFORMATION_MESSAGE);
+                        contenido.remove(avisar);
+                        JLabel enviado = new JLabel("Encargado avisado");
+                        enviado.setForeground(Estilos.TEXTO_SECUNDARIO);
+                        contenido.add(enviado, BorderLayout.EAST);
+                        contenido.revalidate();
+                        contenido.repaint();
+                        NotificacionesUI.actualizarContadorAvisos();
+                    } catch (RuntimeException ex) {
+                        JOptionPane.showMessageDialog(contenido, ex.getMessage(), "Aviso de stock",
+                                JOptionPane.WARNING_MESSAGE);
+                    }
+                });
+                contenido.add(avisar, BorderLayout.EAST);
+            }
+        }
+        return ComponentesUI.tarjeta("Aviso de stock", contenido);
     }
 
     public static void actualizarContador() { if(contador!=null)contador.setText(textoContador()); }

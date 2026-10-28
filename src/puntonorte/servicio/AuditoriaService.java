@@ -66,15 +66,9 @@ public class AuditoriaService {
 
     /** Registra intentos cuyo correo no pertenece a una cuenta. */
     public void registrarSinUsuario(String accion, String tabla, String detalle) {
-        Auditoria a = new Auditoria();
-        a.setIdUsuario(null);
-        a.setUsrAutoriza(null);
-        a.setFechaHora(LocalDateTime.now());
-        a.setAccionRealizada(accion);
-        a.setTablaAfectada(tabla);
-        a.setIdRegistroAfectado(0);
-        a.setDetalleCambio(detalle);
-        auditoriaDAO.guardar(a);
+        // auditoria.idUsuario es NOT NULL y además referencia usuarios. No se puede
+        // registrar un correo desconocido sin un usuario; intentar hacerlo genera
+        // "Column 'idUsuario' cannot be null" en cada intento fallido de login.
     }
 
     public List<Fila> listar(String usuario, String modulo, String operacion, LocalDate fecha) {

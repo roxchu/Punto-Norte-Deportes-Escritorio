@@ -13,14 +13,11 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
-import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 
 import puntonorte.servicio.InicioService;
 import puntonorte.servicio.Sesion;
-import puntonorte.servicio.SolicitudesOperativasService;
 
 public class InicioPanel extends JPanel {
 
@@ -103,55 +100,15 @@ public class InicioPanel extends JPanel {
         JPanel panel = new JPanel(new GridLayout(1, 5, 0, 0));
         panel.setBackground(Estilos.BEIGE);
         panel.setBorder(BorderFactory.createMatteBorder(4, 0, 0, 0, Estilos.AZUL));
-        boolean mostrarAccionStock = datos.disponible && datos.stockBajo > 0 && esEmpleadoDePiso();
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, mostrarAccionStock ? 105 : 78));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
         panel.add(resumen("Productos registrados", valor(datos.productos)));
-        panel.add(resumenStockBajo(mostrarAccionStock));
+        panel.add(resumen("Productos con stock bajo", valor(datos.stockBajo)));
         panel.add(resumen("Ventas registradas hoy", valor(datos.ventasHoy)));
         panel.add(resumen("Pedidos en curso", valor(datos.pedidosAbiertos)));
         panel.add(resumen("Usuarios pendientes", valor(datos.solicitudesUsuarios)));
 
-        return panel;
-    }
-
-    private boolean esEmpleadoDePiso() {
-        String rol = Sesion.getNombreRol().toLowerCase(java.util.Locale.ROOT);
-        return rol.contains("vendedor") || rol.contains("depósito") || rol.contains("deposito");
-    }
-
-    private JPanel resumenStockBajo(boolean mostrarAccion) {
-        JPanel panel = resumen("Productos con stock bajo", valor(datos.stockBajo));
-        if (!mostrarAccion) return panel;
-        SolicitudesOperativasService solicitudes = new SolicitudesOperativasService();
-        boolean yaAvisado;
-        try {
-            yaAvisado = solicitudes.hayAvisoStockActivo();
-        } catch (RuntimeException ex) {
-            yaAvisado = false;
-        }
-        if (yaAvisado) {
-            JLabel estado = new JLabel("Encargado avisado");
-            estado.setFont(new java.awt.Font("Tahoma", java.awt.Font.PLAIN, 10));
-            estado.setForeground(Estilos.TEXTO_SECUNDARIO);
-            panel.add(estado);
-        } else {
-            JButton avisar = ComponentesUI.boton("Avisar a encargado", Estilos.CORAL, Estilos.AZUL);
-            avisar.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 10));
-            avisar.addActionListener(e -> {
-                try {
-                    solicitudes.enviarAvisoStockBajo();
-                    JOptionPane.showMessageDialog(this, "El aviso se envió al Encargado.",
-                            "Aviso enviado", JOptionPane.INFORMATION_MESSAGE);
-                    recargar();
-                } catch (RuntimeException ex) {
-                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso de stock",
-                            JOptionPane.WARNING_MESSAGE);
-                }
-            });
-            panel.add(avisar);
-        }
         return panel;
     }
 
@@ -198,7 +155,7 @@ public class InicioPanel extends JPanel {
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
         panel.add(crearPedidos());
-        panel.add(PeticionesUI.crearTarjetaInicio());
+        panel.add(PeticionesUI.crearTarjetaInicio(datos.stockBajo, datos.disponible));
 
         return panel;
     }

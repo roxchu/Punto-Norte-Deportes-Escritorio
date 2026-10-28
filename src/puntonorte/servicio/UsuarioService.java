@@ -125,7 +125,8 @@ public class UsuarioService {
             throw new ReglaNegocioException("Ya existe una cuenta o solicitud con ese correo.");
         }
         for (Usuario existente : usuarioDAO.listar()) {
-            if (dni.equals(existente.getDni().replaceAll("[.\\s-]", ""))) {
+            String dniExistente = existente.getDni();
+            if (dniExistente != null && dni.equals(dniExistente.replaceAll("[.\\s-]", ""))) {
                 throw new ReglaNegocioException("Ya existe una cuenta o solicitud con ese DNI.");
             }
         }
