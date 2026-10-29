@@ -75,10 +75,8 @@ public class RegistroFrame extends JFrame {
         JTextField apellido = ComponentesUI.campo();
         JTextField correo = ComponentesUI.campo();
 
-        JComboBox<String> rol = ComponentesUI.combo(
-                "Vendedor",
-                "Personal de depósito"
-        );
+        java.util.List<String> rolesDisponibles = usuarioService.rolesSolicitables();
+        JComboBox<String> rol = ComponentesUI.combo(rolesDisponibles.toArray(new String[0]));
 
         JPanel fila1 = filaDoble(
                 ComponentesUI.filaFormulario("DNI", dni),

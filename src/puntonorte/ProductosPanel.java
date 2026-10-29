@@ -36,7 +36,7 @@ public class ProductosPanel extends JPanel {
     private final Runnable actualizarFiltrosCategorias;
     private final JPanel tablaPanel = new JPanel(new BorderLayout());
     private String filtroTexto = "", filtroCategoria = "", filtroSubcategoria = "", filtroTalle = "", filtroColor = "";
-    private boolean filtroStockBajo, incluirInactivos;
+    private boolean filtroStockBajo, incluirInactivos, filtroStockSalonBajo;
     private ArrayList<ProductoVariante> filas = new ArrayList<>();
     private JTable tabla;
 
@@ -94,6 +94,7 @@ public class ProductosPanel extends JPanel {
         try { filas = productos.listarCatalogo(filtroTexto, idCategoria(filtroCategoria), filtroTalle,
                 filtroColor, filtroStockBajo, incluirInactivos); }
         catch (ReglaNegocioException ex) { filas = new ArrayList<>(); }
+        if (filtroStockSalonBajo) filas.removeIf(v -> v.getStockSalon() >= 3);
         if (!filtroSubcategoria.isEmpty()) {
             filas.removeIf(v -> v.getCategoria() == null || !filtroSubcategoria.equalsIgnoreCase(v.getCategoria()));
         }
@@ -134,7 +135,14 @@ public class ProductosPanel extends JPanel {
         filtroColor = "Todos".equals(filtros[4]) ? "" : filtros[4];
         filtroStockBajo = Boolean.parseBoolean(filtros[5]);
         incluirInactivos = Boolean.parseBoolean(filtros[6]);
+        filtroStockSalonBajo = filtros.length >= 8 && Boolean.parseBoolean(filtros[7]);
         recargar();
+    }
+
+    public void seleccionarPrimerProductoStockBajo() {
+        if (tabla == null || filas.isEmpty()) return;
+        tabla.setRowSelectionInterval(0, 0);
+        tabla.scrollRectToVisible(tabla.getCellRect(0, 0, true));
     }
 
     public ArrayList<String> listarSubcategorias() {

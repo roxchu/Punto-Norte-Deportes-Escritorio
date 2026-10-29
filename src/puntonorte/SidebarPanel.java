@@ -37,8 +37,11 @@ public class SidebarPanel extends JPanel {
     private JTextField productoBuscar;
     private JComboBox<String> productoCategoria, productoTalle, productoColor;
     private JComboBox<String> productoSubcategoria;
-    private JCheckBox productoStockBajo, productoInactivos;
+    private JCheckBox productoStockBajo, productoStockSalonBajo, productoInactivos;
     private Consumer<String[]> aplicarFiltrosProductos = valores -> {};
+    private JTextField proveedorBuscar;
+    private JComboBox<String> proveedorEstado;
+    private Consumer<String[]> aplicarFiltrosProveedores = valores -> {};
     private JTextField ventaBuscar, usuarioBuscar;
     private JComboBox<String> ventaCategoria, ventaSubcategoria, ventaTalle, ventaColor;
     private JCheckBox ventasSoloDisponibles;
@@ -249,6 +252,11 @@ public class SidebarPanel extends JPanel {
         panel.add(Box.createVerticalStrut(9));
         panel.add(productoStockBajo);
 
+        productoStockSalonBajo = new JCheckBox("Menos de 3 en Salón");
+        prepararCheck(productoStockSalonBajo);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(productoStockSalonBajo);
+
         productoInactivos = new JCheckBox("Mostrar inactivos");
         prepararCheck(productoInactivos);
         panel.add(Box.createVerticalStrut(5));
@@ -266,10 +274,12 @@ public class SidebarPanel extends JPanel {
         panel.add(Box.createVerticalStrut(7));
         panel.add(limpiar);
         aplicar.addActionListener(e -> enviarFiltrosProductos());
+        productoBuscar.addActionListener(e -> enviarFiltrosProductos());
         limpiar.addActionListener(e -> {
             productoBuscar.setText(""); productoCategoria.setSelectedIndex(0);
             productoSubcategoria.setSelectedIndex(0); productoTalle.setSelectedIndex(0);
             productoColor.setSelectedIndex(0); productoStockBajo.setSelected(false);
+            productoStockSalonBajo.setSelected(false);
             productoInactivos.setSelected(false); enviarFiltrosProductos();
         });
 
@@ -280,26 +290,39 @@ public class SidebarPanel extends JPanel {
 
         JPanel panel = baseSeccion("Proveedores");
 
-        panel.add(etiquetaBlanca("Buscar"));
-        panel.add(campoSidebar());
+        panel.add(etiquetaBlanca("Buscar orden o proveedor"));
+        proveedorBuscar = campoSidebar();
+        panel.add(proveedorBuscar);
 
         panel.add(espacio());
         panel.add(etiquetaBlanca("Estado de la orden de compra"));
-        panel.add(comboSidebar(
+        proveedorEstado = comboSidebar(
                 "Todos",
-                "Solicitado",
-                "Preparando",
-                "En camino",
-                "Recibido",
-                "Cancelado"
-        ));
+                "Pendiente",
+                "Cancelado",
+                "Completado",
+                "Parcial"
+        );
+        panel.add(proveedorEstado);
+
+        JButton aplicar = ComponentesUI.boton("⌕ Aplicar filtros", Estilos.CORAL, Estilos.AZUL);
+        aplicar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        panel.add(Box.createVerticalStrut(12));
+        panel.add(aplicar);
 
         JButton limpiar = ComponentesUI.boton("↺ Limpiar", Estilos.AZUL, Color.WHITE);
         limpiar.setBorder(BorderFactory.createLineBorder(Estilos.AZUL_CLARO));
         limpiar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
 
-        panel.add(Box.createVerticalStrut(12));
+        panel.add(Box.createVerticalStrut(7));
         panel.add(limpiar);
+        aplicar.addActionListener(e -> enviarFiltrosProveedores());
+        proveedorBuscar.addActionListener(e -> enviarFiltrosProveedores());
+        limpiar.addActionListener(e -> {
+            proveedorBuscar.setText("");
+            proveedorEstado.setSelectedIndex(0);
+            enviarFiltrosProveedores();
+        });
 
         JButton refrescar = ComponentesUI.boton("↻ Refrescar panel", Estilos.CORAL, Estilos.AZUL);
         refrescar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
@@ -313,10 +336,11 @@ public class SidebarPanel extends JPanel {
 
     private JPanel crearVentas() {
 
-        JPanel panel = baseSeccion("Catálogo");
+        JPanel panel = baseSeccion("Catálogo y filtros");
 
-        panel.add(etiquetaBlanca("Buscar producto"));
+        panel.add(etiquetaBlanca("Buscar producto / SKU"));
         ventaBuscar = campoSidebar();
+        ventaBuscar.setToolTipText("Escribí el nombre del producto o su SKU");
         panel.add(ventaBuscar);
 
         panel.add(espacio());
@@ -420,6 +444,9 @@ public class SidebarPanel extends JPanel {
         panel.add(Box.createVerticalStrut(7));
         panel.add(limpiar);
         aplicar.addActionListener(e -> enviarFiltrosHistorial());
+        historialUsuario.addActionListener(e -> enviarFiltrosHistorial());
+        historialOperacion.addActionListener(e -> enviarFiltrosHistorial());
+        historialFecha.addActionListener(e -> enviarFiltrosHistorial());
         limpiar.addActionListener(e -> {
             historialUsuario.setText(""); historialModulo.setSelectedIndex(0);
             historialOperacion.setText(""); historialFecha.setText(""); enviarFiltrosHistorial();
@@ -540,6 +567,34 @@ public class SidebarPanel extends JPanel {
         aplicarFiltrosProductos = accion == null ? valores -> {} : accion;
     }
 
+    public void setAplicarFiltrosProveedores(Consumer<String[]> accion) {
+        aplicarFiltrosProveedores = accion == null ? valores -> {} : accion;
+    }
+
+    public void prepararFiltroStockBajo() {
+        productoBuscar.setText("");
+        productoCategoria.setSelectedIndex(0);
+        productoSubcategoria.setSelectedIndex(0);
+        productoTalle.setSelectedIndex(0);
+        productoColor.setSelectedIndex(0);
+        productoStockBajo.setSelected(true);
+        productoStockSalonBajo.setSelected(false);
+        productoInactivos.setSelected(false);
+        enviarFiltrosProductos();
+    }
+
+    public void prepararFiltroStockSalonBajo() {
+        productoBuscar.setText("");
+        productoCategoria.setSelectedIndex(0);
+        productoSubcategoria.setSelectedIndex(0);
+        productoTalle.setSelectedIndex(0);
+        productoColor.setSelectedIndex(0);
+        productoStockBajo.setSelected(false);
+        productoStockSalonBajo.setSelected(true);
+        productoInactivos.setSelected(false);
+        enviarFiltrosProductos();
+    }
+
     public void setOpcionesCategorias(List<Categoria> opciones) {
         categoriasFiltro = opciones == null ? new java.util.ArrayList<>() : new java.util.ArrayList<>(opciones);
         cargarCategorias(productoCategoria);
@@ -598,7 +653,13 @@ public class SidebarPanel extends JPanel {
                 String.valueOf(productoTalle.getSelectedItem()),
                 String.valueOf(productoColor.getSelectedItem()),
                 String.valueOf(productoStockBajo.isSelected()),
-                String.valueOf(productoInactivos.isSelected())});
+                String.valueOf(productoInactivos.isSelected()),
+                String.valueOf(productoStockSalonBajo.isSelected())});
+    }
+
+    private void enviarFiltrosProveedores() {
+        aplicarFiltrosProveedores.accept(new String[] {proveedorBuscar.getText(),
+                String.valueOf(proveedorEstado.getSelectedItem())});
     }
 
     private void enviarFiltrosVentas() {

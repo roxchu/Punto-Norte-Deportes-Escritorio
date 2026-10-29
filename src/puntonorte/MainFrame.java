@@ -22,6 +22,7 @@ import puntonorte.servicio.UsuarioService;
 import puntonorte.servicio.Permisos;
 import puntonorte.servicio.Productoservicio;
 import puntonorte.servicio.InicioService;
+import puntonorte.servicio.Sesion;
 import puntonorte.modelo.Categoria;
 
 /**
@@ -72,6 +73,9 @@ public class MainFrame extends JFrame {
         sidebar.setAplicarFiltrosProductos(filtros -> {
             if (productosPanel != null) productosPanel.aplicarFiltros(filtros);
         });
+        sidebar.setAplicarFiltrosProveedores(filtros -> {
+            if (proveedoresPanel != null) proveedoresPanel.aplicarFiltrosPedidos(filtros);
+        });
         sidebar.setAplicarFiltrosVentas(filtros -> {
             if (ventasPanel != null) ventasPanel.aplicarFiltros(filtros);
         });
@@ -91,7 +95,15 @@ public class MainFrame extends JFrame {
         textoAvisoStockGlobal.setForeground(Estilos.AZUL);
         textoAvisoStockGlobal.setFont(Estilos.FUENTE_NEGRITA);
         JButton revisarStock = ComponentesUI.botonBorde("Revisar productos");
-        revisarStock.addActionListener(e -> mostrarModulo("PRODUCTOS"));
+        revisarStock.addActionListener(e -> {
+            mostrarModulo("PRODUCTOS");
+            if (productosPanel != null) {
+                if (puntonorte.servicio.Permisos.normalizar(Sesion.getNombreRol()).equals("vendedor"))
+                    sidebar.prepararFiltroStockSalonBajo();
+                else sidebar.prepararFiltroStockBajo();
+                productosPanel.seleccionarPrimerProductoStockBajo();
+            }
+        });
         avisoStockGlobal.add(textoAvisoStockGlobal, BorderLayout.CENTER);
         avisoStockGlobal.add(revisarStock, BorderLayout.EAST);
         avisoStockGlobal.setVisible(false);
@@ -188,8 +200,12 @@ public class MainFrame extends JFrame {
             @Override protected void done() {
                 try {
                     InicioService.Datos datos = get();
-                    boolean visible = datos.disponible && datos.stockBajo > 0;
-                    textoAvisoStockGlobal.setText("Atención: hay " + datos.stockBajo + " variante(s) con stock bajo en el sistema.");
+                    boolean vendedor = Permisos.normalizar(Sesion.getNombreRol()).equals("vendedor");
+                    int cantidadAvisada = vendedor ? datos.stockSalonBajo : datos.stockBajo;
+                    boolean visible = datos.disponible && cantidadAvisada > 0;
+                    textoAvisoStockGlobal.setText(vendedor
+                            ? "Atención: hay " + cantidadAvisada + " variante(s) con menos de 3 unidades en Salón."
+                            : "Atención: hay " + cantidadAvisada + " variante(s) con stock bajo en el sistema.");
                     avisoStockGlobal.setVisible(visible);
                     if (!visible) {
                         try { new puntonorte.servicio.SolicitudesOperativasService().hayAvisoStockActivo(); }

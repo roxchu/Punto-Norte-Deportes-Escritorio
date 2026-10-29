@@ -12,8 +12,8 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.JTabbedPane;
 
 import puntonorte.modelo.EstadoUsuario;
 import puntonorte.modelo.Usuario;
@@ -23,10 +23,12 @@ import puntonorte.servicio.UsuarioService;
 /** Listados reales de usuarios y operaciones del módulo. */
 public class UsuariosPanel extends JPanel {
     private static final long serialVersionUID = 1L;
+    private static final EstadoUsuario[] ESTADOS_PESTANAS = {EstadoUsuario.ACTIVO,
+            EstadoUsuario.PENDIENTE, EstadoUsuario.PAUSADO, EstadoUsuario.DESACTIVADO};
     private final JFrame owner;
     private final UsuarioService usuarioService = new UsuarioService();
-    private final JTabbedPane tabs = new JTabbedPane();
-    private final javax.swing.JLabel[] indicadores = new javax.swing.JLabel[4];
+    private final JTabbedPane pestañas = new JTabbedPane();
+    private EstadoUsuario estadoMostrado = EstadoUsuario.ACTIVO;
     private String filtroBusqueda = "";
 
     public UsuariosPanel(JFrame owner) {
@@ -44,14 +46,14 @@ public class UsuariosPanel extends JPanel {
         encabezado.add(ComponentesUI.subtitulo("Solicitudes y estados de las cuentas."));
         contenido.add(encabezado, BorderLayout.NORTH);
 
-        ComponentesUI.estilizarPestanas(tabs);
         JPanel cuerpo = new JPanel(new BorderLayout(0, 14));
         cuerpo.setOpaque(false);
-        cuerpo.add(ComponentesUI.resumenVisual(
-                new String[] {"Pendientes", "Activos", "Pausados", "Desactivados"}, indicadores),
-                BorderLayout.NORTH);
-        JPanel seccion = ComponentesUI.tarjeta("Listado de usuarios", tabs);
-        cuerpo.add(seccion, BorderLayout.CENTER);
+        ComponentesUI.estilizarPestanas(pestañas);
+        pestañas.addChangeListener(e -> {
+            int indice = pestañas.getSelectedIndex();
+            if (indice >= 0 && indice < ESTADOS_PESTANAS.length) estadoMostrado = ESTADOS_PESTANAS[indice];
+        });
+        cuerpo.add(ComponentesUI.tarjeta("Listado de usuarios", pestañas), BorderLayout.CENTER);
         contenido.add(cuerpo, BorderLayout.CENTER);
         add(contenido, BorderLayout.CENTER);
         recargar();
@@ -59,32 +61,35 @@ public class UsuariosPanel extends JPanel {
 
     public final void recargar() {
         try {
-            tabs.removeAll();
-            agregarTab("Activos", EstadoUsuario.ACTIVO);
-            agregarTab("Solicitudes", EstadoUsuario.PENDIENTE);
-            agregarTab("Pausados", EstadoUsuario.PAUSADO);
-            agregarTab("Desactivados", EstadoUsuario.DESACTIVADO);
+            EstadoUsuario estadoAConservar = estadoMostrado;
+            pestañas.removeAll();
+            int indiceSeleccionado = 0;
+            for (EstadoUsuario estado : ESTADOS_PESTANAS) {
+                ArrayList<Usuario> usuarios = usuarioService.listarPorEstado(estado);
+                if (!filtroBusqueda.isBlank()) {
+                    String consulta = filtroBusqueda.trim().toLowerCase(java.util.Locale.ROOT);
+                    usuarios.removeIf(u -> !textoIdentificativo(u).contains(consulta));
+                }
+                usuarios.sort((a, b) -> textoNombre(a).compareToIgnoreCase(textoNombre(b)));
+                pestañas.addTab(nombreTab(estado) + "  " + usuarios.size(), crearTabla(usuarios, estado));
+                if (estado == estadoAConservar) indiceSeleccionado = pestañas.getTabCount() - 1;
+            }
+            pestañas.setSelectedIndex(indiceSeleccionado);
+            estadoMostrado = ESTADOS_PESTANAS[indiceSeleccionado];
             revalidate(); repaint();
         } catch (ReglaNegocioException ex) {
-            tabs.removeAll();
-            tabs.addTab("Usuarios", new JPanel());
+            pestañas.removeAll();
+            pestañas.addTab("Usuarios", new JPanel());
         }
     }
 
-    private void agregarTab(String titulo, EstadoUsuario estado) {
-        ArrayList<Usuario> usuarios = usuarioService.listarPorEstado(estado);
-        if (!filtroBusqueda.isBlank()) {
-            String consulta = filtroBusqueda.trim().toLowerCase(java.util.Locale.ROOT);
-            usuarios.removeIf(u -> !textoUsuario(u).contains(consulta));
-        }
-        int posicion = switch (estado) {
-            case PENDIENTE -> 0;
-            case ACTIVO -> 1;
-            case PAUSADO -> 2;
-            case DESACTIVADO -> 3;
+    private String nombreTab(EstadoUsuario estado) {
+        return switch (estado) {
+            case ACTIVO -> "Activos";
+            case PENDIENTE -> "Solicitudes";
+            case PAUSADO -> "Pausados";
+            case DESACTIVADO -> "Desactivados";
         };
-        indicadores[posicion].setText(String.valueOf(usuarios.size()));
-        tabs.addTab(titulo + "  " + usuarios.size(), crearTabla(usuarios, estado));
     }
 
     public void aplicarFiltroBusqueda(String texto) {
@@ -92,10 +97,12 @@ public class UsuariosPanel extends JPanel {
         recargar();
     }
 
-    private String textoUsuario(Usuario usuario) {
-        return (usuario.getDni() + " " + usuario.getNombre() + " " + usuario.getApellido()
-                + " " + valor(usuario.getTelefono()) + " " + usuario.getCorreo() + " "
-                + usuarioService.nombreRol(usuario.getIdRol())).toLowerCase(java.util.Locale.ROOT);
+    private String textoIdentificativo(Usuario usuario) {
+        return (usuario.getDni() + " " + textoNombre(usuario)).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private String textoNombre(Usuario usuario) {
+        return usuario.getNombre() + " " + usuario.getApellido();
     }
 
     private JPanel crearTabla(ArrayList<Usuario> usuarios, EstadoUsuario estado) {

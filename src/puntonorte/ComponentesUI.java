@@ -69,7 +69,7 @@ public final class ComponentesUI {
         pestanas.setBackground(Estilos.FONDO);
         pestanas.setUI(new BasicTabbedPaneUI() {
             {
-                tabInsets = new Insets(0, 16, 0, 16);
+                tabInsets = new Insets(6, 18, 6, 18);
                 selectedTabPadInsets = new Insets(0, 0, 0, 0);
                 tabAreaInsets = new Insets(0, 0, 0, 0);
                 contentBorderInsets = new Insets(1, 1, 1, 1);
@@ -101,9 +101,15 @@ public final class ComponentesUI {
             protected void paintText(Graphics g, int placement, java.awt.Font font,
                     FontMetrics metrics, int index, String title, java.awt.Rectangle textRect,
                     boolean selected) {
-                g.setFont(Estilos.FUENTE);
-                g.setColor(selected ? Estilos.CORAL : Estilos.AZUL);
-                g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_FRACTIONALMETRICS,
+                        java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+                g2.setFont(Estilos.FUENTE);
+                g2.setColor(selected ? Estilos.CORAL : Estilos.AZUL);
+                g2.drawString(title, textRect.x, textRect.y + g2.getFontMetrics().getAscent());
+                g2.dispose();
             }
 
         });

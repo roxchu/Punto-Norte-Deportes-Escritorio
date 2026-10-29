@@ -52,8 +52,27 @@ public final class SolicitudesOperativasService {
             if(bajo==0)throw new ReglaNegocioException("Ya no hay variantes con stock bajo para informar.");
             try(PreparedStatement q=c.prepareStatement("SELECT COUNT(*) FROM avisos_stock_bajo WHERE estado IN ('Pendiente','Atendido')");ResultSet r=q.executeQuery()){r.next();if(r.getInt(1)>0)throw new ReglaNegocioException("Ya se avisó al Encargado por este nivel de stock. El botón volverá cuando se normalice el stock.");}
             StringBuilder detalle=new StringBuilder();
-            String sql="SELECT p.nombre,v.sku,v.talle,v.color,COALESCE(SUM(s.cantidad),0) cantidad,v.stockMinimo minimo FROM producto_variantes v JOIN productos p ON p.idProducto=v.idProducto LEFT JOIN stock s ON s.idVariante=v.idVariante WHERE p.activo=1 AND v.activo=1 GROUP BY v.idVariante,p.nombre,v.sku,v.talle,v.color,v.stockMinimo HAVING COALESCE(SUM(s.cantidad),0)<=v.stockMinimo ORDER BY cantidad,p.nombre";
-            try(PreparedStatement q=c.prepareStatement(sql);ResultSet r=q.executeQuery()){while(r.next()){if(detalle.length()>0)detalle.append("\n");detalle.append(r.getString("nombre")).append(" · ").append(r.getString("sku")).append(" · talle ").append(r.getString("talle")==null?"—":r.getString("talle")).append(" · ").append(r.getString("color")==null?"—":r.getString("color")).append(" · stock ").append(r.getInt("cantidad")).append(" / mínimo ").append(r.getInt("minimo"));}}
+            String salon="REPLACE(LOWER(TRIM(u.nombre)),'ó','o') LIKE 'salon%'";
+            String deposito="REPLACE(LOWER(TRIM(u.nombre)),'ó','o') LIKE 'deposito%'";
+            String sql="SELECT p.nombre,v.sku,v.talle,v.color,"
+                    +"COALESCE(SUM(CASE WHEN "+salon+" THEN s.cantidad ELSE 0 END),0) stockSalon,"
+                    +"COALESCE(SUM(CASE WHEN "+deposito+" THEN s.cantidad ELSE 0 END),0) stockDeposito "
+                    +"FROM producto_variantes v JOIN productos p ON p.idProducto=v.idProducto "
+                    +"LEFT JOIN stock s ON s.idVariante=v.idVariante LEFT JOIN ubicacion u ON u.idUbicacion=s.idUbicacion "
+                    +"WHERE p.activo=1 AND v.activo=1 GROUP BY v.idVariante,p.nombre,v.sku,v.talle,v.color "
+                    +"HAVING stockSalon < 3 ORDER BY stockSalon,p.nombre";
+            try(PreparedStatement q=c.prepareStatement(sql);ResultSet r=q.executeQuery()){
+                while(r.next()){
+                    int stockDeposito=r.getInt("stockDeposito");
+                    if(detalle.length()>0)detalle.append("\n");
+                    detalle.append(r.getString("nombre")).append(" · ").append(r.getString("sku"))
+                            .append(" · talle ").append(r.getString("talle")==null?"—":r.getString("talle"))
+                            .append(" · ").append(r.getString("color")==null?"—":r.getString("color"))
+                            .append(" · Salón: ").append(r.getInt("stockSalon"))
+                            .append(" · Depósito: ").append(stockDeposito)
+                            .append(stockDeposito>0?" · Pedir traslado desde Depósito":" · Pedir reposición al proveedor");
+                }
+            }
             try(PreparedStatement p=c.prepareStatement("INSERT INTO avisos_stock_bajo (idUsuarioSolicita,detalle,estado) VALUES (?,?,'Pendiente')")){p.setInt(1,Sesion.getIdUsuario());p.setString(2,detalle.toString());p.executeUpdate();}
             auditoria(c,"Aviso de stock bajo enviado",0,"avisos_stock_bajo",detalle.toString());c.commit();
         }catch(Exception e){c.rollback();if(e instanceof RuntimeException)throw(RuntimeException)e;throw new SQLException(e);}}catch(SQLException e){throw error("enviar aviso al Encargado",e);}
@@ -69,7 +88,14 @@ public final class SolicitudesOperativasService {
         puedeResolver();try(Connection c=ConexionBD.conectar()){c.setAutoCommit(false);try(PreparedStatement p=c.prepareStatement("UPDATE avisos_stock_bajo SET estado='Atendido',idUsuarioAtiende=?,fechaAtencion=CURRENT_TIMESTAMP WHERE idAviso=? AND estado='Pendiente'")){p.setInt(1,Sesion.getIdUsuario());p.setInt(2,id);if(p.executeUpdate()!=1)throw new ReglaNegocioException("El aviso ya fue atendido.");auditoria(c,"Aviso de stock bajo atendido",id,"avisos_stock_bajo","Atendido por "+Sesion.getNombreCompleto());c.commit();}catch(Exception e){c.rollback();if(e instanceof RuntimeException)throw(RuntimeException)e;throw new SQLException(e);}}catch(SQLException e){throw error("marcar el aviso como atendido",e);}
     }
 
-    private int contarStockBajo(Connection c)throws SQLException {String sql="SELECT COUNT(*) FROM (SELECT v.idVariante FROM producto_variantes v JOIN productos p ON p.idProducto=v.idProducto LEFT JOIN stock s ON s.idVariante=v.idVariante WHERE p.activo=1 AND v.activo=1 GROUP BY v.idVariante,v.stockMinimo HAVING COALESCE(SUM(s.cantidad),0)<=v.stockMinimo) x";try(PreparedStatement p=c.prepareStatement(sql);ResultSet r=p.executeQuery()){r.next();return r.getInt(1);}}
+    private int contarStockBajo(Connection c)throws SQLException {
+        String salon="REPLACE(LOWER(TRIM(u.nombre)),'ó','o') LIKE 'salon%'";
+        String sql="SELECT COUNT(*) FROM (SELECT v.idVariante FROM producto_variantes v "
+                +"JOIN productos p ON p.idProducto=v.idProducto LEFT JOIN stock s ON s.idVariante=v.idVariante "
+                +"LEFT JOIN ubicacion u ON u.idUbicacion=s.idUbicacion WHERE p.activo=1 AND v.activo=1 "
+                +"GROUP BY v.idVariante HAVING COALESCE(SUM(CASE WHEN "+salon+" THEN s.cantidad ELSE 0 END),0)<3) x";
+        try(PreparedStatement p=c.prepareStatement(sql);ResultSet r=p.executeQuery()){r.next();return r.getInt(1);}
+    }
 
     public void solicitarAnulacion(int venta, String motivo) {
         sesion(); if (!Permisos.normalizar(Sesion.getNombreRol()).equals("vendedor")) throw new ReglaNegocioException("Solo un Vendedor puede solicitar la anulación de una venta.");

@@ -39,7 +39,7 @@ public final class PeticionesUI {
 
     public static JPanel crearTarjetaInicio(int stockBajo, boolean datosStockDisponibles) {
         if (!Permisos.puedeResolverSolicitudesOperativas(Sesion.getNombreRol())) {
-            return crearTarjetaAvisoStock(stockBajo, datosStockDisponibles);
+            return crearTarjetaAvisoStock(stockBajo, datosStockDisponibles, null, false);
         }
         JPanel contenido=new JPanel(new BorderLayout(12,6));contenido.setBackground(Estilos.BEIGE);contenido.setBorder(BorderFactory.createEmptyBorder(10,12,9,12));
         contador=new JLabel(textoContador());contador.setFont(new java.awt.Font("Tahoma",java.awt.Font.BOLD,26));contador.setForeground(Estilos.AZUL);
@@ -50,7 +50,19 @@ public final class PeticionesUI {
         return ComponentesUI.tarjeta("Peticiones",contenido);
     }
 
-    private static JPanel crearTarjetaAvisoStock(int stockBajo, boolean datosDisponibles) {
+    public static JPanel crearTarjetaInicio(int stockBajo, boolean datosDisponibles,
+            int stockSalonBajo, List<puntonorte.servicio.InicioService.StockSalonBajo> variantesSalon) {
+        if (Permisos.puedeResolverSolicitudesOperativas(Sesion.getNombreRol())) {
+            return crearTarjetaInicio(stockBajo, datosDisponibles);
+        }
+        boolean vendedor = Permisos.normalizar(Sesion.getNombreRol()).equals("vendedor");
+        return vendedor
+                ? crearTarjetaAvisoStock(stockSalonBajo, datosDisponibles, variantesSalon, true)
+                : crearTarjetaAvisoStock(stockBajo, datosDisponibles, null, false);
+    }
+
+    private static JPanel crearTarjetaAvisoStock(int stockBajo, boolean datosDisponibles,
+            List<puntonorte.servicio.InicioService.StockSalonBajo> variantesSalon, boolean alertaSalon) {
         JPanel contenido = new JPanel(new BorderLayout(12, 6));
         contenido.setBackground(Estilos.BEIGE);
         contenido.setBorder(BorderFactory.createEmptyBorder(10, 12, 9, 12));
@@ -58,15 +70,35 @@ public final class PeticionesUI {
         JLabel contadorStock = new JLabel(cantidad < 0 ? "—" : String.valueOf(cantidad));
         contadorStock.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 26));
         contadorStock.setForeground(Estilos.AZUL);
-        JLabel descripcion = new JLabel("variantes con stock bajo");
+        JLabel descripcion;
+        if (alertaSalon && datosDisponibles) {
+            long reponerDeposito = variantesSalon.stream().filter(v -> v.stockDeposito > 0).count();
+            long pedirProveedor = variantesSalon.size() - reponerDeposito;
+            StringBuilder texto = new StringBuilder("<html>");
+            if (cantidad == 0) texto.append("No hay variantes por debajo de 3 en Salón.");
+            else {
+                texto.append(cantidad).append(" variante(s) con menos de 3 en Salón.");
+                if (reponerDeposito > 0) texto.append("<br>Con stock en Depósito: pedí que traigan stock al Salón.");
+                if (pedirProveedor > 0) texto.append("<br>Sin stock en Depósito: pedí reposición al proveedor.");
+            }
+            texto.append("</html>");
+            descripcion = new JLabel(texto.toString());
+        } else {
+            descripcion = new JLabel(alertaSalon ? "No se pudo consultar el stock del Salón." : "variantes con stock bajo");
+        }
         descripcion.setForeground(Estilos.TEXTO_SECUNDARIO);
         descripcion.setFont(Estilos.FUENTE_PEQUENA);
+        descripcion.setPreferredSize(new Dimension(235, 55));
         JPanel numero = new JPanel();
         numero.setOpaque(false);
         numero.setLayout(new BoxLayout(numero, BoxLayout.Y_AXIS));
         numero.add(contadorStock);
         numero.add(descripcion);
-        contenido.add(numero, BorderLayout.CENTER);
+        JPanel textoYNumero = new JPanel(new BorderLayout(0, 2));
+        textoYNumero.setOpaque(false);
+        textoYNumero.add(numero, BorderLayout.NORTH);
+        textoYNumero.add(descripcion, BorderLayout.CENTER);
+        contenido.add(textoYNumero, BorderLayout.CENTER);
 
         if (cantidad > 0) {
             SolicitudesOperativasService solicitudes = new SolicitudesOperativasService();

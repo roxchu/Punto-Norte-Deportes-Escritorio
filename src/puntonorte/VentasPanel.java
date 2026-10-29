@@ -33,7 +33,7 @@ public class VentasPanel extends JPanel {
     private final PedidoVenta pedido = new PedidoVenta();
     private final Productoservicio catalogoService = new Productoservicio();
     private JTable tabla;
-    private final JTextField busqueda = ComponentesUI.campo();
+    private String textoBusqueda = "";
     private ArrayList<ProductoVariante> catalogo = new ArrayList<>();
     private JButton verPedido;
     private String filtroCategoria = "", filtroSubcategoria = "", filtroTalle = "", filtroColor = "";
@@ -88,25 +88,18 @@ public class VentasPanel extends JPanel {
         tabla = new JTable();
         tabla.setRowHeight(30);
         tabla.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        JPanel buscarPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        buscarPanel.setOpaque(false);
-        busqueda.setPreferredSize(new Dimension(320, 34));
-        JButton buscar = ComponentesUI.botonBorde("Buscar");
         JButton agregar = ComponentesUI.boton("+ Agregar al pedido", Estilos.AZUL, java.awt.Color.WHITE);
-        buscarPanel.add(new javax.swing.JLabel("Buscar producto / SKU:"));
-        buscarPanel.add(busqueda);
-        buscarPanel.add(buscar);
-        buscarPanel.add(agregar);
-        buscar.addActionListener(e -> recargar());
-        busqueda.addActionListener(e -> recargar());
         agregar.addActionListener(e -> agregarSeleccionado());
         tabla.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { if (e.getClickCount() == 2) agregarSeleccionado(); }
         });
-        JPanel catalogoVisual = new JPanel(new BorderLayout(0, 10));
+        JPanel catalogoVisual = new JPanel(new BorderLayout(0, 8));
         catalogoVisual.setOpaque(false);
-        catalogoVisual.add(buscarPanel, BorderLayout.NORTH);
         catalogoVisual.add(ComponentesUI.scrollTabla(tabla), BorderLayout.CENTER);
+        JPanel accionesCatalogo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        accionesCatalogo.setOpaque(false);
+        accionesCatalogo.add(agregar);
+        catalogoVisual.add(accionesCatalogo, BorderLayout.SOUTH);
         contenido.add(ComponentesUI.tarjeta("Productos disponibles en salón", catalogoVisual));
         add(contenido, BorderLayout.CENTER);
         recargar();
@@ -115,7 +108,7 @@ public class VentasPanel extends JPanel {
     public void recargar() {
         if (!Permisos.puedeVender()) return;
         try {
-            catalogo = servicio.listarCatalogo(busqueda.getText());
+            catalogo = servicio.listarCatalogo(textoBusqueda);
             aplicarFiltrosCatalogo();
             Object[][] filas = new Object[catalogo.size()][5];
             for (int i = 0; i < catalogo.size(); i++) {
@@ -134,7 +127,7 @@ public class VentasPanel extends JPanel {
 
     public void aplicarFiltros(String[] filtros) {
         if (filtros == null || filtros.length < 6) return;
-        busqueda.setText(filtros[0]);
+        textoBusqueda = filtros[0] == null ? "" : filtros[0];
         filtroCategoria = "Todas".equals(filtros[1]) ? "" : filtros[1];
         filtroSubcategoria = "Todas".equals(filtros[2]) ? "" : filtros[2];
         filtroTalle = "Todos".equals(filtros[3]) ? "" : filtros[3];

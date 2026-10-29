@@ -5,6 +5,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +21,7 @@ import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+import java.util.prefs.Preferences;
 
 import puntonorte.servicio.InicioService;
 import puntonorte.servicio.Permisos;
@@ -53,7 +57,17 @@ public final class NotificacionesUI {
             avisos.add(new Aviso("Solicitudes de acceso pendientes",
                     datos.solicitudesUsuarios + " cuenta(s) esperan aprobación. Podés revisarlas en Usuarios."));
         }
-        if (datos.stockBajo > 0) {
+        boolean vendedor = Permisos.normalizar(rol).equals("vendedor");
+        if (vendedor && datos.stockSalonBajo > 0) {
+            StringBuilder detalleSalon = new StringBuilder();
+            for (InicioService.StockSalonBajo variante : datos.variantesStockSalonBajo) {
+                if (detalleSalon.length() > 0) detalleSalon.append("\n");
+                detalleSalon.append(variante.etiqueta()).append(variante.stockDeposito > 0
+                        ? " · Pedí que traigan stock al Salón desde el Depósito"
+                        : " · Pedí stock del producto al proveedor");
+            }
+            avisos.add(new Aviso("Stock bajo para ventas en Salón", detalleSalon.toString()));
+        } else if (!vendedor && datos.stockBajo > 0) {
             avisos.add(new Aviso("Productos con stock bajo",
                     datos.stockBajo + " variante(s) están en el mínimo o por debajo. Revisá Productos."));
         }
@@ -71,6 +85,28 @@ public final class NotificacionesUI {
         return avisos;
     }
 
+    private static Preferences preferenciasLeidos() {
+        return Preferences.userNodeForPackage(NotificacionesUI.class)
+                .node("avisos-leidos")
+                .node(String.valueOf(Sesion.getIdUsuario()));
+    }
+
+    private static String claveAviso(Aviso aviso) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(
+                    (aviso.titulo + "\n" + aviso.detalle).getBytes(StandardCharsets.UTF_8));
+            StringBuilder clave = new StringBuilder();
+            for (byte valor : hash) clave.append(String.format("%02x", valor));
+            return clave.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("No se pudo identificar el aviso.", ex);
+        }
+    }
+
+    private static boolean estaLeido(Aviso aviso) {
+        return preferenciasLeidos().getBoolean(claveAviso(aviso), false);
+    }
+
     public static JButton crearBoton(Component owner) {
         JButton boton = ComponentesUI.boton("⚠ Avisos", Estilos.CORAL, Estilos.AZUL);
         botonAvisos=boton;
@@ -86,7 +122,10 @@ public final class NotificacionesUI {
     }
 
     private static String contarAvisos() {
-        try { return String.valueOf(cargarAvisos().size()); }
+        try {
+            long pendientes = cargarAvisos().stream().filter(aviso -> !estaLeido(aviso)).count();
+            return String.valueOf(pendientes);
+        }
         catch (RuntimeException ex) { return "—"; }
     }
 
@@ -107,7 +146,8 @@ public final class NotificacionesUI {
 
     private static String contarTotalPendientes() {
         try {
-            int avisos=cargarAvisos().size();int peticiones=PeticionesUI.contarPendientes();
+            int avisos=(int)cargarAvisos().stream().filter(aviso -> !estaLeido(aviso)).count();
+            int peticiones=PeticionesUI.contarPendientes();
             return peticiones<0?"—":String.valueOf(avisos+peticiones);
         } catch(RuntimeException ex){return "—";}
     }
@@ -133,12 +173,13 @@ public final class NotificacionesUI {
                 listado.add(vacio);
             } else {
                 for (Aviso aviso : avisos) {
+                    boolean leido = estaLeido(aviso);
                     JPanel item = new JPanel(new BorderLayout(0, 5));
-                    item.setBackground(Estilos.BEIGE);
+                    item.setBackground(leido ? Estilos.FONDO : Estilos.BEIGE);
                     item.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createMatteBorder(0, 4, 0, 0, Estilos.CORAL),
+                            BorderFactory.createMatteBorder(0, 4, 0, 0, leido ? Estilos.AZUL_CLARO : Estilos.CORAL),
                             BorderFactory.createEmptyBorder(9, 12, 9, 12)));
-                    JLabel titulo = new JLabel(aviso.titulo);
+                    JLabel titulo = new JLabel(aviso.titulo + (leido ? " · Leído" : ""));
                     titulo.setForeground(Estilos.AZUL);
                     titulo.setFont(Estilos.FUENTE_NEGRITA);
                     JLabel detalle = new JLabel("<html>" + escapar(aviso.detalle) + "</html>");
@@ -146,13 +187,36 @@ public final class NotificacionesUI {
                     detalle.setForeground(Estilos.TEXTO_SECUNDARIO);
                     item.add(titulo, BorderLayout.NORTH);
                     item.add(detalle, BorderLayout.CENTER);
+                    JButton marcarLeido = leido
+                            ? ComponentesUI.botonBorde("Leído")
+                            : ComponentesUI.boton("Marcar como leído", Estilos.CORAL, Estilos.AZUL);
+                    marcarLeido.setEnabled(!leido);
+                    marcarLeido.addActionListener(e -> {
+                        try {
+                            preferenciasLeidos().putBoolean(claveAviso(aviso), true);
+                            titulo.setText(aviso.titulo + " · Leído");
+                            item.setBackground(Estilos.FONDO);
+                            item.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createMatteBorder(0, 4, 0, 0, Estilos.AZUL_CLARO),
+                                    BorderFactory.createEmptyBorder(9, 12, 9, 12)));
+                            marcarLeido.setText("Leído");
+                            marcarLeido.setEnabled(false);
+                            actualizarContadorAvisos();
+                        } catch (RuntimeException ex) {
+                            JOptionPane.showMessageDialog(dialogo, "No se pudo guardar el aviso como leído.",
+                                    "Avisos", JOptionPane.WARNING_MESSAGE);
+                        }
+                    });
+                    JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+                    botones.setOpaque(false);
                     if (aviso.avisoStock != null) {
                         JButton atendido = ComponentesUI.boton("Marcar atendido", Estilos.CORAL, Estilos.AZUL);
                         atendido.addActionListener(e -> atenderAviso(dialogo, aviso.avisoStock));
-                        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-                        botones.setOpaque(false); botones.add(atendido); item.add(botones, BorderLayout.SOUTH);
+                        botones.add(atendido);
                     }
-                    item.setMaximumSize(new Dimension(Integer.MAX_VALUE, aviso.avisoStock == null ? 90 : 145));
+                    botones.add(marcarLeido);
+                    item.add(botones, BorderLayout.SOUTH);
+                    item.setMaximumSize(new Dimension(Integer.MAX_VALUE, aviso.avisoStock == null ? 125 : 145));
                     listado.add(item);
                     listado.add(Box.createVerticalStrut(9));
                 }

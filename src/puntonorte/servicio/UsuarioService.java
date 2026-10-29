@@ -393,8 +393,11 @@ public class UsuarioService {
     }
 
     private Rol rolPorNombre(String nombre) {
+        String nombreNormalizado = Permisos.normalizar(nombre);
         for (Rol r : rolDAO.listar()) {
-            if (r.getNombreRol().equalsIgnoreCase(nombre)) {
+            String rolNormalizado = Permisos.normalizar(r.getNombreRol());
+            if (rolNormalizado.equals(nombreNormalizado)
+                    || (nombreNormalizado.contains("deposito") && rolNormalizado.contains("deposito"))) {
                 return r;
             }
         }

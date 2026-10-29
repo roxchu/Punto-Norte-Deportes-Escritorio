@@ -36,8 +36,9 @@ public class OrdenCompraDialog extends JDialog {
 
     private OrdenCompraDialog(Window owner, CompraService.DetalleOrdenCompra orden) {
         super(owner, "Detalle de orden de compra · OC-" + orden.id, ModalityType.APPLICATION_MODAL);
-        setSize(940, 700);
-        setMinimumSize(new java.awt.Dimension(760, 580));
+        setSize(1120, 720);
+        setMinimumSize(new java.awt.Dimension(900, 600));
+        setResizable(true);
         setLocationRelativeTo(owner);
 
         JEditorPane documento = new JEditorPane();

@@ -104,7 +104,9 @@ public class InicioPanel extends JPanel {
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
         panel.add(resumen("Productos registrados", valor(datos.productos)));
-        panel.add(resumen("Productos con stock bajo", valor(datos.stockBajo)));
+        boolean vendedor = puntonorte.servicio.Permisos.normalizar(Sesion.getNombreRol()).equals("vendedor");
+        panel.add(resumen(vendedor ? "Variantes con menos de 3 en Salón" : "Productos con stock bajo",
+                valor(vendedor ? datos.stockSalonBajo : datos.stockBajo)));
         panel.add(resumen("Ventas registradas hoy", valor(datos.ventasHoy)));
         panel.add(resumen("Pedidos en curso", valor(datos.pedidosAbiertos)));
         panel.add(resumen("Usuarios pendientes", valor(datos.solicitudesUsuarios)));
@@ -155,7 +157,8 @@ public class InicioPanel extends JPanel {
         panel.setAlignmentX(LEFT_ALIGNMENT);
 
         panel.add(crearPedidos());
-        panel.add(PeticionesUI.crearTarjetaInicio(datos.stockBajo, datos.disponible));
+        panel.add(PeticionesUI.crearTarjetaInicio(datos.stockBajo, datos.disponible,
+                datos.stockSalonBajo, datos.variantesStockSalonBajo));
 
         return panel;
     }

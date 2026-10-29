@@ -34,10 +34,27 @@ public class InicioService {
         }
     }
 
+    public static final class StockSalonBajo {
+        public final String producto, sku, talle, color;
+        public final int stockSalon, stockDeposito;
+        public StockSalonBajo(String producto, String sku, String talle, String color,
+                int stockSalon, int stockDeposito) {
+            this.producto=producto; this.sku=sku; this.talle=talle; this.color=color;
+            this.stockSalon=stockSalon; this.stockDeposito=stockDeposito;
+        }
+        public String etiqueta() {
+            return producto + " · " + sku + " · " + (talle == null ? "—" : talle) + "/"
+                    + (color == null ? "—" : color) + " · Salón: " + stockSalon
+                    + " · Depósito: " + stockDeposito;
+        }
+    }
+
     public static final class Datos {
         public boolean disponible = true;
         public int productos;
         public int stockBajo;
+        public int stockSalonBajo;
+        public final List<StockSalonBajo> variantesStockSalonBajo = new ArrayList<>();
         public int ventasHoy;
         public int pedidosAbiertos;
         public int solicitudesUsuarios;
@@ -60,6 +77,7 @@ public class InicioService {
                     + "LEFT JOIN stock s ON s.idVariante=v.idVariante "
                     + "WHERE v.activo=1 AND p.activo=1 GROUP BY v.idVariante,v.stockMinimo "
                     + "HAVING COALESCE(SUM(s.cantidad),0) <= COALESCE(v.stockMinimo,0)) variantes_bajas");
+            cargarStockSalonBajo(c, datos);
             try (PreparedStatement p = c.prepareStatement(sqlVentas)) {
                 p.setDate(1, java.sql.Date.valueOf(LocalDate.now()));
                 p.setDate(2, java.sql.Date.valueOf(LocalDate.now().plusDays(1)));
@@ -86,6 +104,26 @@ public class InicioService {
         } catch (SQLException e) {
             throw new ReglaNegocioException("No se pudieron cargar los datos del inicio. Revisá la conexión con la base.");
         }
+    }
+
+    private void cargarStockSalonBajo(Connection c, Datos datos) throws SQLException {
+        String salon = "REPLACE(LOWER(TRIM(u.nombre)),'ó','o') LIKE 'salon%'";
+        String deposito = "REPLACE(LOWER(TRIM(u.nombre)),'ó','o') LIKE 'deposito%'";
+        String sql = "SELECT p.nombre, v.sku, v.talle, v.color, "
+                + "COALESCE(SUM(CASE WHEN " + salon + " THEN s.cantidad ELSE 0 END),0) stockSalon, "
+                + "COALESCE(SUM(CASE WHEN " + deposito + " THEN s.cantidad ELSE 0 END),0) stockDeposito "
+                + "FROM producto_variantes v JOIN productos p ON p.idProducto=v.idProducto "
+                + "LEFT JOIN stock s ON s.idVariante=v.idVariante "
+                + "LEFT JOIN ubicacion u ON u.idUbicacion=s.idUbicacion "
+                + "WHERE p.activo=1 AND v.activo=1 "
+                + "GROUP BY v.idVariante,p.nombre,v.sku,v.talle,v.color "
+                + "HAVING stockSalon < 3 ORDER BY stockSalon,p.nombre,v.sku";
+        try (PreparedStatement p = c.prepareStatement(sql); ResultSet r = p.executeQuery()) {
+            while (r.next()) datos.variantesStockSalonBajo.add(new StockSalonBajo(
+                    r.getString("nombre"), r.getString("sku"), r.getString("talle"),
+                    r.getString("color"), r.getInt("stockSalon"), r.getInt("stockDeposito")));
+        }
+        datos.stockSalonBajo = datos.variantesStockSalonBajo.size();
     }
 
     /** Consulta auditoría y ventas por separado para que un problema en una fuente no oculte la otra. */
